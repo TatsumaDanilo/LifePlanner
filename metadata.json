@@ -1,0 +1,8 @@
+{
+  "name": "LifePlanner",
+  "description": "A mobile-first, high-performance daily planner designed for one-handed thumb navigation with Material 3 and Liquid Blur aesthetics.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
