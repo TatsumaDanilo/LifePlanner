@@ -1,14 +1,14 @@
 
 // ... existing imports ...
-// (Keeping all imports same as provided file)
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, ChevronRight, Bell, Calendar, ChevronLeft, Check, Scale, Hash, Ban, ChevronDown, Clock, Repeat, Minus, Plus, Save, X, RotateCcw, Timer, Hourglass, Trash2, ChevronUp, CornerDownRight, List } from 'lucide-react';
+import { HelpCircle, ChevronRight, Bell, Calendar, ChevronLeft, Check, Scale, Hash, Ban, ChevronDown, Clock, Repeat, Minus, Plus, Save, X, RotateCcw, Timer, Hourglass, Trash2, ChevronUp, CornerDownRight, List, Link } from 'lucide-react';
 import { Habit, MicroHabit } from '../types';
 
 interface Props {
   type: string;
-  initialData?: Habit; // Added initialData prop
+  initialData?: Habit;
+  existingHabits?: Habit[]; // New prop
   onBack: () => void;
   onSave: (habitData: Partial<Habit>) => void;
 }
@@ -45,7 +45,7 @@ const HABIT_UNITS = ['time', 'minute', 'hour'];
 const PERIODS = ['Day', 'Week', 'Month', 'Year'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) => {
+const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [], onBack, onSave }) => {
   // Navigation State
   const [step, setStep] = useState(1);
 
@@ -58,7 +58,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
   // Weight Specific
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>('kg'); 
   const [goalDirection, setGoalDirection] = useState('lose');
-  const [isGoalPickerOpen, setIsGoalPickerOpen] = useState(false);
   const [targetWeightEnabled, setTargetWeightEnabled] = useState(false);
   const [targetWeight, setTargetWeight] = useState('80.0');
 
@@ -90,6 +89,9 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
   const [reminderTimes, setReminderTimes] = useState<string[]>([]); // List of added times
   const [description, setDescription] = useState('');
   
+  // Smart Stacking
+  const [stackTrigger, setStackTrigger] = useState('');
+
   // Increment Settings
   const [incrementAmount, setIncrementAmount] = useState<number | string>(1);
   const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
@@ -113,7 +115,8 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
         setColor(initialData.color);
         setDescription(initialData.description || '');
         setCountValue(initialData.goal);
-        setIncrementAmount(initialData.increment || 1); // Fixed: Added increment loading
+        setIncrementAmount(initialData.increment || 1); 
+        setStackTrigger(initialData.stackTrigger || '');
         
         if (initialData.structure) {
             setStructure(initialData.structure);
@@ -122,14 +125,12 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
         // LOAD REMINDERS
         if (initialData.reminders && initialData.reminders.length > 0) {
             setHasReminder(true);
-            // Assuming simplified UI where all times share the same days for now
             setReminderTimes(initialData.reminders.map(r => r.time));
             if (initialData.reminders[0].days) {
                 setReminderDays(initialData.reminders[0].days);
             }
         }
         
-        // Try to parse units/type specific info
         if (initialData.unit === 'kg' || initialData.unit === 'lbs') {
             setWeightUnit(initialData.unit);
             if (initialData.goal > 0) {
@@ -144,7 +145,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
              setCountUnit(initialData.unit);
         }
 
-        // Try to parse description config
         try {
             if (initialData.description && initialData.description.startsWith('{')) {
                 const config = JSON.parse(initialData.description);
@@ -165,16 +165,9 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
     const scrollToBottom = () => {
         el.scrollTop = el.scrollHeight;
     };
-
-    // Immediate scroll on render/update
     scrollToBottom();
-
-    // Fallback timeout for animations that might not trigger mutation immediately but affect layout
     const timeout = setTimeout(scrollToBottom, 300);
-
-    return () => {
-        clearTimeout(timeout);
-    };
+    return () => { clearTimeout(timeout); };
   }, [step, reminderTimes.length, hasReminder, targetWeightEnabled, notificationsEnabled, frequencyType, isUnitPickerOpen, isPeriodPickerOpen, isColorPickerOpen]);
 
   // --- HANDLERS ---
@@ -185,20 +178,31 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
   };
 
   const handleFinalSave = () => {
+    // Resolve Smart Stack ID
+    let stackedAfterId = undefined;
+    if (stackTrigger.trim()) {
+        const parentHabit = existingHabits.find(h => h.name.toLowerCase() === stackTrigger.trim().toLowerCase());
+        if (parentHabit) {
+            stackedAfterId = parentHabit.id;
+        }
+    }
+
     // Construct Final Object
     const habitData: Partial<Habit> = {
-      id: initialData?.id, // Preserve ID if editing
+      id: initialData?.id, 
       name,
       color,
-      timeOfDay: 'any', // Simplified for now
+      timeOfDay: 'any', 
       streak: initialData?.streak || 0,
       history: initialData?.history || {},
       unit: type === 'value' ? weightUnit : (type === 'count' ? countUnit as any : 'minutes'),
       goal: 0,
-      increment: Number(incrementAmount) || 1, // Fixed: Added increment saving
+      increment: Number(incrementAmount) || 1, 
       description: description || undefined,
-      structure: structure.length > 0 ? structure : undefined, // Save structure
-      reminders: hasReminder ? reminderTimes.map(t => ({ time: t, days: reminderDays })) : [], // SAVE REMINDERS
+      structure: structure.length > 0 ? structure : undefined, 
+      reminders: hasReminder ? reminderTimes.map(t => ({ time: t, days: reminderDays })) : [], 
+      stackTrigger: stackTrigger.trim() || undefined, // Save Stack Trigger Name (Legacy/Visual)
+      stackedAfterId: stackedAfterId, // Save Stack ID (Robust)
     };
 
     if (type === 'value') {
@@ -209,15 +213,13 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
         habitData.description = `Start: ${startDateTime}`; 
         habitData.unit = 'minutes'; 
     } else if (type === 'count') {
-        // If structured, goal is purely cosmetic or 1
         habitData.goal = structure.length > 0 ? 1 : countValue;
         
-        // Save Frequency Data in Description for Logic
         const frequencyConfig = {
             type: frequencyType,
             days: frequencyType === 'specific' ? selectedDays : [],
             daysPerWeek: frequencyType === 'days_per' ? daysPerWeek : 7,
-            text: description // Preserve manual text
+            text: description 
         };
         habitData.description = JSON.stringify(frequencyConfig);
     }
@@ -225,6 +227,7 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
     onSave(habitData);
   };
 
+  // ... (rest of the component methods: adjustWeight, toggleTargetWeight, etc. remain the same)
   const adjustWeight = (delta: number) => {
     const current = parseFloat(targetWeight) || 0;
     const newVal = Math.max(0, Math.round((current + delta) * 10) / 10);
@@ -279,7 +282,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
       setIsUnitPickerOpen(false);
   };
   
-  // Micro-habit handlers
   const addMicroHabit = () => {
       if (!newMicroHabitTitle.trim()) return;
       
@@ -290,7 +292,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
       };
 
       if (activeParentId) {
-          // Add as sub-habit
           const updateRecursive = (list: MicroHabit[]): MicroHabit[] => {
               return list.map(item => {
                   if (item.id === activeParentId) {
@@ -305,7 +306,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
           setStructure(updateRecursive(structure));
           setActiveParentId(null);
       } else {
-          // Add as root habit
           setStructure([...structure, newMicro]);
       }
       setNewMicroHabitTitle('');
@@ -320,8 +320,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
        };
        setStructure(deleteRecursive(structure));
   };
-
-  // --- RENDER HELPERS ---
 
   const renderNameColorSection = () => (
     <div className="mb-6">
@@ -375,21 +373,8 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
                       <div className="flex items-center gap-2 bg-zinc-900 border border-white/5 rounded-xl p-3">
                           {level > 0 && <CornerDownRight size={14} className="text-zinc-600" />}
                           <span className="text-xs font-bold text-white flex-1">{item.title}</span>
-                          
-                          {/* Add Sub-task Button */}
-                          <button 
-                             onClick={() => setActiveParentId(item.id)}
-                             className="p-1.5 rounded-lg bg-white/5 text-zinc-400 hover:text-white"
-                          >
-                             <Plus size={14} />
-                          </button>
-
-                          <button 
-                             onClick={() => deleteMicroHabit(item.id)}
-                             className="p-1.5 rounded-lg bg-white/5 text-red-400/70 hover:text-red-400"
-                          >
-                             <Trash2 size={14} />
-                          </button>
+                          <button onClick={() => setActiveParentId(item.id)} className="p-1.5 rounded-lg bg-white/5 text-zinc-400 hover:text-white"><Plus size={14} /></button>
+                          <button onClick={() => deleteMicroHabit(item.id)} className="p-1.5 rounded-lg bg-white/5 text-red-400/70 hover:text-red-400"><Trash2 size={14} /></button>
                       </div>
                       {item.subHabits && item.subHabits.length > 0 && renderStructureList(item.subHabits, level + 1)}
                   </div>
@@ -398,40 +383,23 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
       );
   };
 
-  // --- STEP 1 RENDER ---
   const renderStep1 = () => (
     <div className="min-h-full flex flex-col justify-end px-6 pb-28 pt-2">
-      {/* Type Specific Fields */}
       {type === 'value' && (
           <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white">Target Weight</label>
-                  </div>
-                  <button 
-                      onClick={toggleTargetWeight}
-                      className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${targetWeightEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
-                  >
-                      <div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${targetWeightEnabled ? 'left-6' : 'left-1'}`} />
-                  </button>
+                  <div className="flex items-center gap-2"><label className="text-[11px] font-black uppercase tracking-widest text-white">Target Weight</label></div>
+                  <button onClick={toggleTargetWeight} className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${targetWeightEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}><div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${targetWeightEnabled ? 'left-6' : 'left-1'}`} /></button>
               </div>
-
               <div className={`transition-opacity duration-300 ${targetWeightEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
                   <div className="flex gap-3 mb-4">
                       <div className="flex-1 h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-2 flex items-center justify-between">
                           <button onClick={() => adjustWeight(-0.1)} className="w-10 h-10 flex items-center justify-center text-zinc-500 active:bg-white/5 rounded-full active:text-white transition-colors"><Minus size={18} /></button>
-                          <div className="flex items-baseline gap-1">
-                              <span className="text-xl font-black text-white">{targetWeight}</span>
-                              <span className="text-xs font-bold text-zinc-500">{weightUnit}</span>
-                          </div>
+                          <div className="flex items-baseline gap-1"><span className="text-xl font-black text-white">{targetWeight}</span><span className="text-xs font-bold text-zinc-500">{weightUnit}</span></div>
                           <button onClick={() => adjustWeight(0.1)} className="w-10 h-10 flex items-center justify-center text-zinc-500 active:bg-white/5 rounded-full active:text-white transition-colors"><Plus size={18} /></button>
                       </div>
-                      
-                      <button onClick={toggleWeightUnit} className="w-20 h-14 bg-zinc-900 border border-white/10 rounded-[20px] flex items-center justify-center text-sm font-bold text-zinc-300 active:bg-white/5 transition-colors">
-                          {weightUnit === 'kg' ? 'KG' : 'LBS'}
-                      </button>
+                      <button onClick={toggleWeightUnit} className="w-20 h-14 bg-zinc-900 border border-white/10 rounded-[20px] flex items-center justify-center text-sm font-bold text-zinc-300 active:bg-white/5 transition-colors">{weightUnit === 'kg' ? 'KG' : 'LBS'}</button>
                   </div>
-
                   <div className="flex bg-zinc-900 p-1 rounded-[16px] border border-white/5">
                       <button onClick={() => setGoalDirection('lose')} className={`flex-1 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-wider transition-all ${goalDirection === 'lose' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Lose</button>
                       <button onClick={() => setGoalDirection('maintain')} className={`flex-1 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-wider transition-all ${goalDirection === 'maintain' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Maintain</button>
@@ -442,50 +410,28 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
           </div>
       )}
 
-      {/* ... [Quit and Count type logic unchanged] ... */}
       {type === 'quit' && (
           <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-white">Milestone Notifications</label>
-                  </div>
-                  <button 
-                      onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                      className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${notificationsEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
-                  >
-                      <div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${notificationsEnabled ? 'left-6' : 'left-1'}`} />
-                  </button>
+                  <div className="flex items-center gap-2"><label className="text-[11px] font-black uppercase tracking-widest text-white">Milestone Notifications</label></div>
+                  <button onClick={() => setNotificationsEnabled(!notificationsEnabled)} className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${notificationsEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}><div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${notificationsEnabled ? 'left-6' : 'left-1'}`} /></button>
               </div>
-              
               <div className={`w-full overflow-x-auto no-scrollbar transition-opacity duration-300 ${notificationsEnabled ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
                   <div className="flex gap-2 pb-2">
-                      {MILESTONES.map((m) => (
-                          <div key={m.id} className="flex-shrink-0 px-5 py-3 bg-zinc-800 rounded-[14px] border border-white/5">
-                              <span className="text-[10px] font-bold text-zinc-400 whitespace-nowrap">{m.label}</span>
-                          </div>
-                      ))}
+                      {MILESTONES.map((m) => (<div key={m.id} className="flex-shrink-0 px-5 py-3 bg-zinc-800 rounded-[14px] border border-white/5"><span className="text-[10px] font-bold text-zinc-400 whitespace-nowrap">{m.label}</span></div>))}
                   </div>
               </div>
               <div className="w-full h-px bg-white/5 my-6" />
-
               <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white">Quit Start Date</label>
-                    </div>
+                    <div className="flex items-center gap-2 mb-3"><label className="text-[11px] font-black uppercase tracking-widest text-white">Quit Start Date</label></div>
                     <div className="flex gap-3">
                         <div className="flex-1 relative h-14 bg-zinc-900 border border-white/10 rounded-[20px] overflow-hidden">
                              <input type="date" value={quitDate} onChange={(e) => setQuitDate(e.target.value)} className="absolute inset-0 w-full h-full bg-transparent text-center text-sm font-bold text-white uppercase focus:outline-none px-4 z-10 opacity-0" />
-                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                 <Calendar size={16} className="text-zinc-500 mr-2" />
-                                 <span className="text-sm font-bold text-white">{new Date(quitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                             </div>
+                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><Calendar size={16} className="text-zinc-500 mr-2" /><span className="text-sm font-bold text-white">{new Date(quitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
                         </div>
                         <div className="w-32 relative h-14 bg-zinc-900 border border-white/10 rounded-[20px] overflow-hidden">
                              <input type="time" value={quitTime} onChange={(e) => setQuitTime(e.target.value)} className="absolute inset-0 w-full h-full bg-transparent text-center text-sm font-bold text-white uppercase focus:outline-none px-4 z-10 opacity-0" />
-                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                 <Clock size={16} className="text-zinc-500 mr-2" />
-                                 <span className="text-sm font-bold text-white">{quitTime}</span>
-                             </div>
+                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><Clock size={16} className="text-zinc-500 mr-2" /><span className="text-sm font-bold text-white">{quitTime}</span></div>
                         </div>
                     </div>
               </div>
@@ -496,11 +442,7 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
       {type === 'count' && (
           <>
               <div className={`mb-6 space-y-3 ${countPeriod !== 'Day' ? 'opacity-30 pointer-events-none' : ''}`}>
-                  {[
-                      { id: 'every', label: 'Every day of the week' },
-                      { id: 'specific', label: 'Specific days of the week' },
-                      { id: 'days_per', label: 'Number of days per week' },
-                  ].map((opt) => (
+                  {[{ id: 'every', label: 'Every day of the week' }, { id: 'specific', label: 'Specific days of the week' }, { id: 'days_per', label: 'Number of days per week' }].map((opt) => (
                       <div key={opt.id} onClick={() => countPeriod === 'Day' && setFrequencyType(opt.id as any)} className="flex items-center justify-between gap-3 cursor-pointer group">
                           <span className={`text-sm font-bold transition-colors ${frequencyType === opt.id ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-300'}`}>{opt.label}</span>
                           <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${frequencyType === opt.id ? 'border-blue-500 bg-blue-500/20' : 'border-zinc-600 bg-transparent group-hover:border-zinc-500'}`}>
@@ -558,16 +500,8 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
                   <div className="flex items-center justify-center gap-2 mt-3">
                        <span className="text-[10px] text-zinc-400 font-medium">per</span>
                        <div className="relative">
-                          <button onClick={() => setIsPeriodPickerOpen(!isPeriodPickerOpen)} className="px-3 py-1.5 bg-zinc-800 rounded-[12px] border border-white/5 flex items-center gap-2 active:bg-zinc-700">
-                              <span className="text-xs font-bold text-white">{countPeriod}</span><ChevronDown size={10} className="text-zinc-500" />
-                          </button>
-                          <AnimatePresence>
-                              {isPeriodPickerOpen && (
-                                  <motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[100px] bg-zinc-900 border border-white/10 rounded-[16px] overflow-hidden shadow-xl z-50 py-1">
-                                      {PERIODS.map(p => (<button key={p} onClick={() => { setCountPeriod(p); setIsPeriodPickerOpen(false); }} className="w-full text-center px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-white/10 hover:text-white">{p}</button>))}
-                                  </motion.div>
-                              )}
-                          </AnimatePresence>
+                          <button onClick={() => setIsPeriodPickerOpen(!isPeriodPickerOpen)} className="px-3 py-1.5 bg-zinc-800 rounded-[12px] border border-white/5 flex items-center gap-2 active:bg-zinc-700"><span className="text-xs font-bold text-white">{countPeriod}</span><ChevronDown size={10} className="text-zinc-500" /></button>
+                          <AnimatePresence>{isPeriodPickerOpen && (<motion.div initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: 0.95 }} className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[100px] bg-zinc-900 border border-white/10 rounded-[16px] overflow-hidden shadow-xl z-50 py-1">{PERIODS.map(p => (<button key={p} onClick={() => { setCountPeriod(p); setIsPeriodPickerOpen(false); }} className="w-full text-center px-4 py-2 text-xs font-bold text-zinc-300 hover:bg-white/10 hover:text-white">{p}</button>))}</motion.div>)}</AnimatePresence>
                        </div>
                   </div>
               </div>
@@ -579,365 +513,215 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
     </div>
   );
 
-  // --- STEP 2 RENDER (INVERTED ORDER) ---
   const renderStep2 = () => (
-      <div className="min-h-full flex flex-col justify-end px-6 pb-28 pt-8">
-          
-          {/* 1. Description (Previously at bottom) */}
-          <div className="mb-4">
-               <div className="flex items-center gap-2 mb-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-white">Description</label>
-                  <HelpCircle size={12} className="text-zinc-600" />
-               </div>
-               <input 
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="(Optional)"
-                  className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/20 transition-colors"
-               />
-          </div>
+    <div className="min-h-full flex flex-col justify-end px-6 pb-28 pt-2">
+      
+      {/* Description */}
+      <div className="mb-6">
+           <div className="flex items-center gap-2 mb-3">
+                <label className="text-[11px] font-black uppercase tracking-widest text-white">Notes / Motivation</label>
+           </div>
+           <textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Why is this habit important?" 
+                className="w-full h-24 bg-zinc-900 border border-white/10 rounded-[20px] p-4 text-xs font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors resize-none"
+           />
+      </div>
 
-          {type === 'count' && (
-            <>  
-                {/* 2. MICRO-HABITS / CHECKLIST */}
-                <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white">Checklist / Micro-habits</label>
-                        <List size={12} className="text-zinc-600" />
-                    </div>
-                    
-                    <div className="bg-zinc-900/50 border border-white/5 rounded-[24px] p-4">
-                        {/* List */}
-                        {structure.length > 0 ? (
-                            <div className="mb-4">
-                                {renderStructureList(structure)}
+      <div className="w-full h-px bg-white/5 my-6" />
+
+      {/* Reminders */}
+      <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2"><Bell size={14} className="text-zinc-400"/><label className="text-[11px] font-black uppercase tracking-widest text-white">Reminders</label></div>
+              <button onClick={() => setHasReminder(!hasReminder)} className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${hasReminder ? 'bg-blue-500' : 'bg-zinc-700'}`}><div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${hasReminder ? 'left-6' : 'left-1'}`} /></button>
+          </div>
+          
+          <AnimatePresence>
+            {hasReminder && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                             <div className="relative flex-1 h-14 bg-zinc-900 border border-white/10 rounded-[20px] overflow-hidden">
+                                 <input type="time" value={currentReminderTime} onChange={(e) => setCurrentReminderTime(e.target.value)} className="absolute inset-0 w-full h-full bg-transparent text-center text-sm font-bold text-white focus:outline-none px-4 z-10 opacity-0" />
+                                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="text-lg font-black text-white">{currentReminderTime}</span></div>
+                             </div>
+                             <button onClick={handleAddReminderTime} className="w-14 h-14 bg-zinc-900 border border-white/10 rounded-[20px] flex items-center justify-center text-zinc-400 active:bg-white/5 active:text-white transition-colors"><Plus size={20}/></button>
+                        </div>
+                        
+                        {reminderTimes.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {reminderTimes.map(t => (
+                                    <div key={t} className="px-3 py-1.5 bg-zinc-800 rounded-[12px] border border-white/5 flex items-center gap-2">
+                                        <span className="text-xs font-bold text-white">{t}</span>
+                                        <button onClick={() => handleRemoveReminderTime(t)} className="text-zinc-500 hover:text-white"><X size={12}/></button>
+                                    </div>
+                                ))}
                             </div>
-                        ) : (
-                            <div className="text-center py-4 text-xs text-zinc-600 italic">No micro-habits added</div>
                         )}
 
-                        {/* Input Area */}
-                        <div className="flex gap-2 items-center">
-                            {activeParentId && (
-                                <div className="px-2 py-1 bg-zinc-800 rounded-md text-[10px] text-zinc-400 flex items-center gap-1">
-                                    Sub-task <button onClick={() => setActiveParentId(null)}><X size={10}/></button>
-                                </div>
-                            )}
-                            <input 
-                                type="text"
-                                value={newMicroHabitTitle}
-                                onChange={(e) => setNewMicroHabitTitle(e.target.value)}
-                                placeholder={activeParentId ? "Add sub-task..." : "Add item..."}
-                                className="flex-1 bg-zinc-900 border border-white/10 rounded-[16px] h-10 px-3 text-sm text-white focus:outline-none"
-                                onKeyDown={(e) => e.key === 'Enter' && addMicroHabit()}
-                            />
-                            <button 
-                                onClick={addMicroHabit}
-                                className="w-10 h-10 rounded-[16px] bg-white/10 flex items-center justify-center text-white"
-                            >
-                                <Plus size={18} />
-                            </button>
+                        <div>
+                            <div className="flex gap-1 flex-wrap justify-between mt-2">
+                                {WEEKDAYS.map((day, idx) => (
+                                    <button key={day} onClick={() => toggleReminderDay(idx)} className={`w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black uppercase transition-all ${reminderDays.includes(idx) ? 'bg-white text-black shadow-lg scale-105' : 'bg-zinc-800 text-zinc-500 border border-white/5'}`}>{day.charAt(0)}</button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* 3. Additional Settings Buttons (Increment/Timer) */}
-                <div className="space-y-3 mb-6">
-                     <button 
-                        onClick={() => setIsIncrementModalOpen(true)}
-                        className="w-full bg-zinc-900 border border-white/5 rounded-[24px] p-4 flex items-center justify-between active:bg-zinc-800 transition-colors"
-                     >
-                         <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-[14px] bg-white/5 flex items-center justify-center text-zinc-400">
-                                 <Plus size={18} />
-                             </div>
-                             <span className="text-sm font-bold text-white">Increment Amount</span>
-                             <HelpCircle size={12} className="text-zinc-600" />
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <span className="text-xs font-bold text-zinc-300">{incrementAmount} {countUnit}</span>
-                             <ChevronRight size={14} className="text-zinc-600" />
-                         </div>
-                     </button>
-
-                     <button 
-                        onClick={() => setIsTimerSettingsModalOpen(true)}
-                        className="w-full bg-zinc-900 border border-white/5 rounded-[24px] p-4 flex items-center justify-between active:bg-zinc-800 transition-colors"
-                     >
-                         <div className="flex items-center gap-3">
-                             <div className="w-10 h-10 rounded-[14px] bg-white/5 flex items-center justify-center text-zinc-400">
-                                 <Clock size={18} />
-                             </div>
-                             <span className="text-sm font-bold text-white">Timer Settings</span>
-                             <HelpCircle size={12} className="text-zinc-600" />
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <span className="text-xs font-bold text-zinc-300">Customize</span>
-                             <ChevronRight size={14} className="text-zinc-600" />
-                         </div>
-                     </button>
-                </div>
-
-                {/* 4. Divider with UP ARROW */}
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="h-px bg-white/10 flex-1" />
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Additional Habit Settings</span>
-                        <ChevronUp size={12} className="text-zinc-500" />
-                    </div>
-                    <div className="h-px bg-white/10 flex-1" />
-                </div>
-            </>
-          )}
-
-          {/* 5. Reminder Section (Previously at top) */}
-          <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                      <label className="text-sm font-bold text-white">Set a Reminder?</label>
-                      <HelpCircle size={14} className="text-zinc-600" />
-                  </div>
-                  <button 
-                      onClick={() => setHasReminder(!hasReminder)}
-                      className={`w-12 h-7 rounded-full transition-colors duration-300 relative ${hasReminder ? 'bg-blue-500' : 'bg-zinc-700'}`}
-                  >
-                      <div className={`absolute top-1 bottom-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${hasReminder ? 'left-6' : 'left-1'}`} />
-                  </button>
-              </div>
-
-              <div className={`transition-opacity duration-300 ${hasReminder ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
-                  {/* Days */}
-                  <div className="flex justify-between mb-6 px-1">
-                      {WEEKDAYS.map((day, idx) => {
-                          const isSelected = reminderDays.includes(idx);
-                          return (
-                              <button 
-                                  key={day}
-                                  onClick={() => toggleReminderDay(idx)}
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'bg-white text-black shadow-lg scale-105' : 'bg-zinc-900 border border-white/10 text-zinc-500'}`}
-                              >
-                                  {day.charAt(0)}
-                              </button>
-                          );
-                      })}
-                  </div>
-
-                  {/* Infinite Time Picker */}
-                  <div className="flex flex-col gap-3 items-center">
-                      <div className="flex items-center gap-3 w-full max-w-[280px]">
-                           <button 
-                                onClick={handleAddReminderTime}
-                                className="h-12 w-12 rounded-[16px] bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 flex items-center justify-center text-white transition-colors flex-shrink-0"
-                           >
-                                <Plus size={20} />
-                           </button>
-
-                           <div className="flex-1 bg-zinc-900 border border-white/10 rounded-[20px] px-6 py-3 flex items-center justify-center gap-4 relative overflow-hidden">
-                               <input 
-                                  type="time" 
-                                  value={currentReminderTime}
-                                  onChange={(e) => setCurrentReminderTime(e.target.value)}
-                                  className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
-                               />
-                               <span className="text-2xl font-black text-white tracking-widest pointer-events-none">
-                                  {currentReminderTime.split(':')[0]} <span className="text-zinc-600 mx-1">:</span> {currentReminderTime.split(':')[1]}
-                               </span>
-                          </div>
-                      </div>
-
-                      {/* Added Times List */}
-                      <AnimatePresence>
-                          {reminderTimes.length > 0 && (
-                             <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="w-full flex flex-wrap justify-center gap-2 mt-2"
-                             >
-                                {reminderTimes.map((t, idx) => (
-                                    <motion.div 
-                                        key={`${t}-${idx}`}
-                                        initial={{ scale: 0.8, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0.8, opacity: 0 }}
-                                        className="bg-zinc-800 border border-white/5 rounded-full pl-4 pr-1 py-1 flex items-center gap-3"
-                                    >
-                                        <span className="text-sm font-bold text-zinc-300">{t}</span>
-                                        <button 
-                                            onClick={() => handleRemoveReminderTime(t)}
-                                            className="w-6 h-6 rounded-full bg-white/5 hover:bg-red-500/20 hover:text-red-400 flex items-center justify-center text-zinc-500 transition-colors"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
-                                    </motion.div>
-                                ))}
-                             </motion.div>
-                          )}
-                      </AnimatePresence>
-                  </div>
-              </div>
-          </div>
+                </motion.div>
+            )}
+          </AnimatePresence>
       </div>
+
+      {type === 'count' && (
+          <>
+            <div className="w-full h-px bg-white/5 my-6" />
+            
+            {/* Smart Stacking */}
+            <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                    <Link size={14} className="text-zinc-400"/>
+                    <label className="text-[11px] font-black uppercase tracking-widest text-white">Smart Stacking</label>
+                </div>
+                <div className="relative">
+                    <select 
+                        value={stackTrigger} 
+                        onChange={(e) => setStackTrigger(e.target.value)} 
+                        className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-4 text-sm font-bold text-white appearance-none focus:outline-none"
+                    >
+                        <option value="">No Trigger (Standalone)</option>
+                        {existingHabits.map(h => (
+                            <option key={h.id} value={h.name}>{h.name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-2 ml-2 leading-relaxed">After I [Trigger Habit], I will [This Habit].</p>
+            </div>
+
+            <div className="w-full h-px bg-white/5 my-6" />
+
+            {/* Micro Habits */}
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2"><List size={14} className="text-zinc-400"/><label className="text-[11px] font-black uppercase tracking-widest text-white">Micro-Habits</label></div>
+                </div>
+                
+                <div className="bg-zinc-900/50 border border-white/5 rounded-[24px] p-4 mb-3 min-h-[60px]">
+                    {structure.length > 0 ? renderStructureList(structure) : <div className="text-center py-2"><span className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">No sub-tasks</span></div>}
+                </div>
+
+                <div className="flex gap-2">
+                     <div className="relative flex-1">
+                        {activeParentId && <div className="absolute -top-5 left-2 text-[9px] text-zinc-400 flex items-center gap-1"><CornerDownRight size={10} /> Adding sub-task</div>}
+                        <input 
+                            type="text" 
+                            value={newMicroHabitTitle} 
+                            onChange={(e) => setNewMicroHabitTitle(e.target.value)} 
+                            placeholder={activeParentId ? "Sub-task title..." : "Add a task..."}
+                            className="w-full h-12 bg-zinc-900 border border-white/10 rounded-[16px] px-4 text-xs font-bold text-white focus:outline-none placeholder:text-zinc-600"
+                            onKeyDown={(e) => e.key === 'Enter' && addMicroHabit()}
+                        />
+                     </div>
+                     <button onClick={addMicroHabit} className="w-12 h-12 bg-zinc-800 border border-white/10 rounded-[16px] flex items-center justify-center text-white active:bg-white/10 transition-colors"><Plus size={18} /></button>
+                     {activeParentId && <button onClick={() => setActiveParentId(null)} className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-[16px] flex items-center justify-center text-red-400 active:bg-red-500/20 transition-colors"><X size={18} /></button>}
+                </div>
+            </div>
+
+            <div className="w-full h-px bg-white/5 my-6" />
+
+            <div className="grid grid-cols-2 gap-3 mb-6">
+                <button onClick={() => setIsIncrementModalOpen(true)} className="h-20 bg-zinc-900 border border-white/10 rounded-[24px] flex flex-col items-center justify-center gap-2 active:bg-zinc-800 transition-colors">
+                    <Plus size={20} className="text-zinc-400" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Increment</span>
+                    <span className="text-xs font-bold text-white">+{incrementAmount}</span>
+                </button>
+                <button onClick={() => setIsTimerSettingsModalOpen(true)} className="h-20 bg-zinc-900 border border-white/10 rounded-[24px] flex flex-col items-center justify-center gap-2 active:bg-zinc-800 transition-colors">
+                    <Clock size={20} className="text-zinc-400" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Timer</span>
+                    <span className="text-xs font-bold text-white capitalize">{timerDefault}</span>
+                </button>
+            </div>
+          </>
+      )}
+    </div>
   );
 
   return (
     <div className="w-full flex flex-col h-[65vh] relative">
-       {/* Scrollable Container */}
        <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar relative">
           <AnimatePresence mode="wait">
               {step === 1 ? (
-                  <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-full">
-                      {renderStep1()}
-                  </motion.div>
+                  <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="min-h-full">{renderStep1()}</motion.div>
               ) : (
-                  <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="min-h-full">
-                      {renderStep2()}
-                  </motion.div>
+                  <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="min-h-full">{renderStep2()}</motion.div>
               )}
           </AnimatePresence>
        </div>
 
-       {/* Footer Actions */}
-       <div 
-        className="absolute bottom-0 left-0 right-0 z-40 px-6 pb-6 pt-10 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"
-       >
+       <div className="absolute bottom-0 left-0 right-0 z-40 px-6 pb-6 pt-10 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
         <div className="flex gap-4 pointer-events-auto">
           {!(step === 1 && initialData) && (
-            <button 
-               onClick={step === 1 ? onBack : () => setStep(1)} 
-               className="flex-1 py-5 bg-zinc-900 border border-white/10 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] text-white active:bg-white/10 transition-colors flex items-center justify-center gap-2"
-            >
-               {step === 1 ? <><ChevronLeft size={14} /> Back</> : 'Cancel'}
-            </button>
+            <button onClick={step === 1 ? onBack : () => setStep(1)} className="flex-1 py-5 bg-zinc-900 border border-white/10 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] text-white active:bg-white/10 transition-colors flex items-center justify-center gap-2">{step === 1 ? <><ChevronLeft size={14} /> Back</> : 'Cancel'}</button>
           )}
-          
-          <button 
-             onClick={step === 1 ? handleNextStep : handleFinalSave} 
-             className={`flex-1 py-5 bg-white text-black rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2`}
-          >
-             {step === 1 ? <><span className="mr-1">Next</span> <ChevronRight size={14} /></> : 'Save Habit'}
-          </button>
+          <button onClick={step === 1 ? handleNextStep : handleFinalSave} className={`flex-1 py-5 bg-white text-black rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2`}>{step === 1 ? <><span className="mr-1">Next</span> <ChevronRight size={14} /></> : 'Save Habit'}</button>
         </div>
       </div>
       
-      {/* CUSTOM UNIT MODAL (Step 1) */}
+      {/* ... Existing Modals (Custom Unit, Increment, Timer) ... */}
       <AnimatePresence>
          {isCustomUnitModalOpen && (
-             <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }} 
-                className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center"
-                onClick={(e) => e.stopPropagation()}
-             >
-                 <motion.div 
-                    initial={{ y: "100%" }}
-                    animate={{ y: 0 }}
-                    exit={{ y: "100%" }}
-                    className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative"
-                    onClick={(e) => e.stopPropagation()}
-                 >
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center" onClick={(e) => e.stopPropagation()}>
+                 <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                     <div className="w-12 h-1 bg-zinc-700 rounded-full mx-auto mb-6" />
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-xl font-black uppercase tracking-tighter text-white">Custom Units</h2>
-                        <button onClick={() => setIsCustomUnitModalOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-400"><X size={16} /></button>
-                    </div>
-                    {/* ... Custom Unit Fields ... */}
+                    <div className="flex items-center justify-between mb-8"><h2 className="text-xl font-black uppercase tracking-tighter text-white">Custom Units</h2><button onClick={() => setIsCustomUnitModalOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-400"><X size={16} /></button></div>
                     <div className="space-y-4 mb-8">
-                         <div className="space-y-2">
-                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 pl-2">Singular</label>
-                             <input type="text" value={customSingular} onChange={(e) => setCustomSingular(e.target.value)} placeholder="cup" className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm font-bold text-white focus:outline-none" />
-                         </div>
-                         <div className="space-y-2">
-                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 pl-2">Plural</label>
-                             <input type="text" value={customPlural} onChange={(e) => setCustomPlural(e.target.value)} placeholder="cups" className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm font-bold text-white focus:outline-none" />
-                         </div>
+                         <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 pl-2">Singular</label><input type="text" value={customSingular} onChange={(e) => setCustomSingular(e.target.value)} placeholder="cup" className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm font-bold text-white focus:outline-none" /></div>
+                         <div className="space-y-2"><label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 pl-2">Plural</label><input type="text" value={customPlural} onChange={(e) => setCustomPlural(e.target.value)} placeholder="cups" className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm font-bold text-white focus:outline-none" /></div>
                     </div>
-                    <div className="flex gap-3">
-                         <button onClick={() => setIsCustomUnitModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button>
-                         <button onClick={handleSaveCustomUnit} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save Unit</button>
-                    </div>
+                    <div className="flex gap-3"><button onClick={() => setIsCustomUnitModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={handleSaveCustomUnit} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save Unit</button></div>
                  </motion.div>
              </motion.div>
          )}
       </AnimatePresence>
 
-      {/* INCREMENT AMOUNT MODAL (Step 2) */}
       <AnimatePresence>
          {isIncrementModalOpen && (
-             <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center"
-                onClick={() => setIsIncrementModalOpen(false)}
-             >
-                 <motion.div 
-                    initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                    className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative"
-                    onClick={(e) => e.stopPropagation()}
-                 >
-                    <div className="text-center mb-6">
-                        <h2 className="text-lg font-bold text-white">Custom Increment Amount</h2>
-                    </div>
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center" onClick={() => setIsIncrementModalOpen(false)}>
+                 <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-center mb-6"><h2 className="text-lg font-bold text-white">Custom Increment Amount</h2></div>
                     <div className="flex items-center justify-center gap-4 mb-6">
                         <div className="h-16 bg-zinc-900 border border-white/10 rounded-[24px] px-3 flex items-center gap-4">
                             <button onClick={() => setIncrementAmount(Math.max(1, Number(incrementAmount) - 1))} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400"><Minus size={18}/></button>
-                            {/* EDITABLE INPUT */}
-                            <input 
-                                type="number" 
-                                value={incrementAmount} 
-                                onChange={(e) => setIncrementAmount(Number(e.target.value))}
-                                className="bg-transparent text-center w-20 text-2xl font-black text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            />
+                            <input type="number" value={incrementAmount} onChange={(e) => setIncrementAmount(Number(e.target.value))} className="bg-transparent text-center w-20 text-2xl font-black text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                             <button onClick={() => setIncrementAmount(Number(incrementAmount) + 1)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400"><Plus size={18}/></button>
                         </div>
                         <span className="text-lg font-bold text-white">{type === 'count' ? countUnit : (type === 'value' ? weightUnit : 'time')}</span>
                     </div>
                     <p className="text-center text-xs text-zinc-500 mb-8 px-8">When you tap on the habit increment button (+), this amount will be added</p>
-                    <div className="flex gap-3">
-                         <button onClick={() => setIsIncrementModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Close</button>
-                         <button onClick={() => setIsIncrementModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Apply</button>
-                    </div>
+                    <div className="flex gap-3"><button onClick={() => setIsIncrementModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Close</button><button onClick={() => setIsIncrementModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Apply</button></div>
                  </motion.div>
              </motion.div>
          )}
       </AnimatePresence>
 
-      {/* TIMER SETTINGS MODAL (Step 2) */}
       <AnimatePresence>
          {isTimerSettingsModalOpen && (
-             <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-                className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center"
-                onClick={() => setIsTimerSettingsModalOpen(false)}
-             >
-                 <motion.div 
-                    initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                    className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative"
-                    onClick={(e) => e.stopPropagation()}
-                 >
-                    <div className="text-center mb-8">
-                        <h2 className="text-lg font-bold text-white">Timer Settings</h2>
-                    </div>
-                    
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center" onClick={() => setIsTimerSettingsModalOpen(false)}>
+                 <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full bg-[#121212] rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 border-t sm:border border-white/10 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-center mb-8"><h2 className="text-lg font-bold text-white">Timer Settings</h2></div>
                     <div className="mb-6 space-y-6 px-2">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-white">Timer Default</span>
-                                <HelpCircle size={14} className="text-zinc-600" />
-                            </div>
+                            <div className="flex items-center gap-2"><span className="text-sm font-bold text-white">Timer Default</span><HelpCircle size={14} className="text-zinc-600" /></div>
                             <div className="flex bg-zinc-900 rounded-[14px] p-1 border border-white/5">
                                 <button onClick={() => setTimerDefault('stopwatch')} className={`px-3 py-2 rounded-[10px] text-[10px] font-bold uppercase transition-all ${timerDefault === 'stopwatch' ? 'bg-white text-black shadow-md' : 'text-zinc-500'}`}>Stopwatch</button>
                                 <button onClick={() => setTimerDefault('countdown')} className={`px-3 py-2 rounded-[10px] text-[10px] font-bold uppercase transition-all ${timerDefault === 'countdown' ? 'bg-white text-black shadow-md' : 'text-zinc-500'}`}>Countdown</button>
                             </div>
                         </div>
-
                         {timerDefault === 'countdown' && (
                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-white">Countdown Default</span>
-                                    <HelpCircle size={14} className="text-zinc-600" />
-                                </div>
+                                <div className="flex items-center gap-2"><span className="text-sm font-bold text-white">Countdown Default</span><HelpCircle size={14} className="text-zinc-600" /></div>
                                 <div className="bg-zinc-900 border border-white/10 rounded-[16px] px-4 py-2 flex items-center gap-2">
                                      <button onClick={() => setCountdownDuration(Math.max(1, countdownDuration - 5))} className="text-zinc-500 active:text-white"><Minus size={14}/></button>
                                      <span className="text-sm font-black text-white w-12 text-center">{countdownDuration} m</span>
@@ -946,11 +730,7 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
                              </div>
                         )}
                     </div>
-
-                    <div className="flex gap-3 mt-8">
-                         <button onClick={() => setIsTimerSettingsModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button>
-                         <button onClick={() => setIsTimerSettingsModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Apply</button>
-                    </div>
+                    <div className="flex gap-3 mt-8"><button onClick={() => setIsTimerSettingsModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={() => setIsTimerSettingsModalOpen(false)} className="flex-1 h-14 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Apply</button></div>
                  </motion.div>
              </motion.div>
          )}

@@ -239,7 +239,8 @@ const App: React.FC = () => {
               history: {},
               structure: habitData.structure, 
               dailyStructures: habitData.dailyStructures,
-              reminders: habitData.reminders // Save reminders
+              reminders: habitData.reminders, // Save reminders
+              stackTrigger: habitData.stackTrigger // Save stack trigger
            };
            handleUpdateState({ ...appState, habits: [...appState.habits, newHabit] });
       }
@@ -293,7 +294,7 @@ const App: React.FC = () => {
   
   const showGlobalUI = !isMagicPopulating && !(activeTab === 'media' && (selectedMediaId !== null || isSeriesViewOpen)) && !isHabitDetailOpen;
   
-  const showFloatingMenu = showGlobalUI && activeTab !== 'home' && activeTab !== 'habits' && !isHabitDetailOpen;
+  const showFloatingMenu = showGlobalUI && activeTab === 'media' && !isHabitDetailOpen;
 
   const bottomPadding = (activeTab === 'home' || activeTab === 'media' || activeTab === 'habits') ? 'pb-0' : (showGlobalUI ? 'pb-32' : 'pb-4');
   
@@ -387,6 +388,7 @@ const App: React.FC = () => {
                         <AddHabitForm 
                             type={selectedHabitType} 
                             initialData={habitToEdit}
+                            existingHabits={appState.habits} // Pass habits for smart stacking
                             onBack={() => { setSelectedHabitType(null); setHabitToEdit(undefined); }} 
                             onSave={handleCreateHabit}
                         />

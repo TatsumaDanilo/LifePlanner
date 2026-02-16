@@ -26,6 +26,10 @@ export interface Habit {
 
   // Notification settings
   reminders?: { time: string; days: number[] }[];
+  
+  // Smart Stacking
+  stackTrigger?: string; // Name of the activity that triggers this habit (e.g. "Caffè")
+  stackedAfterId?: string; // ID of the activity that triggers this habit
 }
 
 export interface LogEntry {
@@ -57,6 +61,8 @@ export interface DailyBlock {
   time: string; 
   activity: string;
   isFixed: boolean;
+  habitId?: string; // Link to a tracked habit
+  mediaId?: string; // Link to a specific media item
 }
 
 export interface AppState {
