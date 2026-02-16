@@ -71,6 +71,7 @@ export interface AppState {
   media: MediaItem[];
   waterIntake: number;
   brainDump: string;
-  dailyBlocks: DailyBlock[];
+  // Changed from DailyBlock[] to a map keyed by date string (YYYY-MM-DD)
+  dailyBlocks: { [date: string]: DailyBlock[] };
   dayEndTime: string; 
 }

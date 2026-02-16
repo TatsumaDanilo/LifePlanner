@@ -80,6 +80,7 @@ const BlockEditorModal = ({
         const media = mediaItems.find(m => m.id === selectedMediaId);
 
         if (habit && media) {
+            // FIXED: Replaced garbled characters with standard bullet point
             newName = `${habit.name} • ${media.title}`;
         } else if (habit) {
             // Only update if current text is empty or matches the old naming pattern to avoid overwriting user notes
@@ -303,16 +304,27 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
 
   const handleDeleteBlock = () => {
       if (!editorData) return;
-      const newBlocks = state.dailyBlocks.filter(b => b.time !== editorData.time);
-      setState({ ...state, dailyBlocks: newBlocks });
+      const dateKey = getLocalDateKey(selectedDate);
+      const dayBlocks = state.dailyBlocks[dateKey] || [];
+      const newBlocks = dayBlocks.filter(b => b.time !== editorData.time);
+      
+      setState({ 
+          ...state, 
+          dailyBlocks: {
+              ...state.dailyBlocks,
+              [dateKey]: newBlocks
+          }
+      });
       setEditorData(null);
   };
 
   const handleSaveBlock = (activity: string, habitId?: string, mediaId?: string, addReminder?: boolean) => {
       if (!editorData || !activity.trim()) return;
 
-      // 0. Ensure Habit ID is linked if name matches exactly (Robustness)
-      // This helps if user typed the name but didn't select from dropdown
+      const dateKey = getLocalDateKey(selectedDate);
+      const dayBlocks = state.dailyBlocks[dateKey] || [];
+
+      // 0. Ensure Habit ID is linked if name matches exactly (Robustness for manual text entry)
       if (!habitId && activity.trim()) {
           const matched = state.habits.find(h => h.name.toLowerCase() === activity.trim().toLowerCase());
           if (matched) habitId = matched.id;
@@ -343,14 +355,13 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           });
       }
 
-      // 2. Prepare Updated Blocks
-      const otherBlocks = state.dailyBlocks.filter(b => b.time !== editorData.time);
+      // 2. Prepare Updated Blocks for the CURRENT DATE
+      const otherBlocks = dayBlocks.filter(b => b.time !== editorData.time);
       let updatedBlocks = [...otherBlocks, newBlock];
       
       // 3. Smart Stacking Check Logic
       if (habitId) {
-          // Use state.habits to be absolutely sure we have the definition, 
-          // including stackedAfterId which might have been set recently.
+          // Use state.habits to be absolutely sure we have the definition
           const currentHabit = state.habits.find(h => h.id === habitId);
           
           if (currentHabit) {
@@ -368,9 +379,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
               }
 
               if (parentHabit) {
-                  // Check if Parent is already in the schedule (anywhere today)
-                  // Note: updatedBlocks currently includes the block we just added (newBlock).
-                  // We check if the PARENT is there.
+                  // Check if Parent is already in the schedule (anywhere TODAY)
                   const isParentScheduled = updatedBlocks.some(b => b.habitId === parentHabit!.id);
                   
                   if (!isParentScheduled) {
@@ -379,7 +388,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                       
                       if (prevIndex >= 0) {
                           const prevTime = hours[prevIndex];
-                          // Check if the previous slot is occupied
+                          // Check if the previous slot is occupied IN THE CURRENT DAY
                           const isPrevSlotOccupied = updatedBlocks.some(b => b.time === prevTime);
                           
                           if (!isPrevSlotOccupied) {
@@ -401,9 +410,17 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           }
       }
 
-      // 4. Final Sort and Save
+      // 4. Final Sort and Save to specific date
       updatedBlocks.sort((a, b) => a.time.localeCompare(b.time));
-      setState({ ...state, dailyBlocks: updatedBlocks, habits: updatedHabits });
+      
+      setState({ 
+          ...state, 
+          dailyBlocks: {
+              ...state.dailyBlocks,
+              [dateKey]: updatedBlocks
+          },
+          habits: updatedHabits 
+      });
       setEditorData(null);
   };
 
@@ -429,8 +446,6 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
               const isTriggerDone = typeof triggerEntry === 'number' ? triggerEntry >= triggerHabit.goal : (triggerEntry && triggerEntry.completedIds?.length > 0);
               
               if (!isTriggerDone) {
-                  // Locked!
-                  // Ideally show a toast here
                   alert(`Locked! Complete "${triggerHabit.name}" first.`);
                   return;
               }
@@ -559,7 +574,11 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                     className={`space-y-2 no-scrollbar ${!isAgendaExpanded ? 'overflow-hidden' : 'overflow-y-auto'}`}
                 >
                     {visibleHours.map((time) => {
-                        const block = state.dailyBlocks.find(b => b.time === time);
+                        // Retrieve blocks specifically for the selected day
+                        const dateKey = getLocalDateKey(selectedDate);
+                        const dayBlocks = state.dailyBlocks[dateKey] || [];
+                        const block = dayBlocks.find(b => b.time === time);
+                        
                         const linkedHabit = block?.habitId ? state.habits.find(h => h.id === block.habitId) : null;
                         const linkedMedia = block?.mediaId ? state.media.find(m => m.id === block.mediaId) : null;
                         const isCurrentSlot = time === currentTimeSlot;
@@ -578,7 +597,6 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                             if (depId) {
                                 const triggerHabit = state.habits.find(h => h.id === depId);
                                 if (triggerHabit) {
-                                    const dateKey = getLocalDateKey(selectedDate);
                                     const triggerEntry = triggerHabit.history[dateKey];
                                     const isTriggerDone = typeof triggerEntry === 'number' ? triggerEntry >= triggerHabit.goal : (triggerEntry && triggerEntry.completedIds?.length > 0);
                                     if (!isTriggerDone) isLocked = true;
@@ -589,7 +607,6 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                         // Completion Status
                         let isCompleted = false;
                         if (linkedHabit) {
-                            const dateKey = getLocalDateKey(selectedDate);
                             const entry = linkedHabit.history[dateKey];
                             isCompleted = typeof entry === 'number' ? entry >= linkedHabit.goal : (entry && entry.completedIds?.length > 0);
                         }

@@ -1,6 +1,15 @@
 
 import { AppState } from '../types';
 
+// Helper to get today's date key for mock data so it appears immediately
+const getTodayKey = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const initialData: AppState = {
   habits: [
     {
@@ -170,11 +179,13 @@ export const initialData: AppState = {
   ],
   waterIntake: 3,
   brainDump: 'Ricordarsi di prenotare il ristorante per sabato. Finire il modulo React entro sera. Fare la spesa (latte, pane, uova).',
-  dailyBlocks: [
-    { time: '08:30', activity: 'Morning Skincare & Coffee', isFixed: true },
-    { time: '09:00', activity: 'Deep Work: Project React', isFixed: false },
-    { time: '11:00', activity: 'Meeting Team', isFixed: true },
-    { time: '13:00', activity: 'Pranzo e Lettura Dune', isFixed: false }
-  ],
+  dailyBlocks: {
+    [getTodayKey()]: [
+      { time: '08:30', activity: 'Morning Skincare & Coffee', isFixed: true, habitId: 'h1' },
+      { time: '09:00', activity: 'Deep Work: Project React', isFixed: false },
+      { time: '11:00', activity: 'Meeting Team', isFixed: true },
+      { time: '13:00', activity: 'Pranzo e Lettura Dune', isFixed: false, mediaId: 'b2' }
+    ]
+  },
   dayEndTime: '23:30'
 };
