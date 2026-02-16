@@ -80,7 +80,6 @@ const BlockEditorModal = ({
         const media = mediaItems.find(m => m.id === selectedMediaId);
 
         if (habit && media) {
-            // FIXED: Replaced garbled characters with standard bullet point
             newName = `${habit.name} • ${media.title}`;
         } else if (habit) {
             // Only update if current text is empty or matches the old naming pattern to avoid overwriting user notes
@@ -360,6 +359,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
       let updatedBlocks = [...otherBlocks, newBlock];
       
       // 3. Smart Stacking Check Logic
+      // Only execute this logic if we have a valid habit and we're not just editing an existing block's text
       if (habitId) {
           // Use state.habits to be absolutely sure we have the definition
           const currentHabit = state.habits.find(h => h.id === habitId);
@@ -372,7 +372,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                   parentHabit = state.habits.find(h => h.id === currentHabit.stackedAfterId);
               }
               
-              // B. Resolve Dependency - Name Fallback
+              // B. Resolve Dependency - Name Fallback (if ID failed or missing)
               if (!parentHabit && currentHabit.stackTrigger) {
                   const triggerName = currentHabit.stackTrigger.trim().toLowerCase();
                   parentHabit = state.habits.find(h => h.name.toLowerCase() === triggerName);
@@ -380,14 +380,18 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
 
               if (parentHabit) {
                   // Check if Parent is already in the schedule (anywhere TODAY)
+                  // Note: updatedBlocks currently includes the block we just added (newBlock).
+                  // We check if the PARENT is already present in ANY slot.
                   const isParentScheduled = updatedBlocks.some(b => b.habitId === parentHabit!.id);
                   
+                  // ONLY PROPOSE if parent is NOT scheduled
                   if (!isParentScheduled) {
                       const currentIndex = hours.indexOf(editorData.time);
                       const prevIndex = currentIndex - 1; // Exactly 30 mins before
                       
                       if (prevIndex >= 0) {
                           const prevTime = hours[prevIndex];
+                          
                           // Check if the previous slot is occupied IN THE CURRENT DAY
                           const isPrevSlotOccupied = updatedBlocks.some(b => b.time === prevTime);
                           
