@@ -99,8 +99,8 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
   const isSelected = (d: Date) => d.toDateString() === selectedDate.toDateString();
 
   return (
-    <div className="flex flex-col transform-gpu px-1 w-full h-auto pb-32">
-      <header className="flex-shrink-0 px-1 mb-4 flex items-center justify-between">
+    <div className="flex flex-col transform-gpu w-full h-auto pb-32">
+      <header className="flex-shrink-0 px-6 pt-16 mb-4 flex items-center justify-between">
         <div>
             <h1 className="text-4xl font-black tracking-tighter">Daily Plan</h1>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">Deep Work & Flow</p>
@@ -125,7 +125,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
 
       <div 
         ref={scrollRef}
-        className="flex space-x-3 overflow-x-auto no-scrollbar py-4 mb-4 -mx-4 px-4 mask-fade-edges"
+        className="flex space-x-3 overflow-x-auto no-scrollbar py-4 mb-4 px-6 mask-fade-edges"
       >
         {days.map((date, i) => (
           <motion.button
@@ -151,7 +151,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
         ))}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 px-6">
         <GlassCard 
           title="Brain Dump" 
           icon={<Sparkles size={18} className="text-purple-400" />}

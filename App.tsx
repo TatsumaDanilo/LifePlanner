@@ -297,10 +297,10 @@ const App: React.FC = () => {
 
   const bottomPadding = (activeTab === 'home' || activeTab === 'media' || activeTab === 'habits') ? 'pb-0' : (showGlobalUI ? 'pb-32' : 'pb-4');
   
-  const containerPadding = (activeTab === 'media' || activeTab === 'habits') ? 'p-0' : 'p-4';
+  const containerPadding = 'p-0';
 
   return (
-    <div className="relative h-[100dvh] w-full flex flex-col overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="relative w-full h-full max-w-[600px] mx-auto flex flex-col overflow-hidden bg-[#0a0a0a] text-white shadow-2xl md:border-x md:border-white/10 transform-gpu">
       <div className="absolute top-[-25%] left-[-15%] w-[90%] h-[70%] bg-purple-900/15 blur-[140px] rounded-full pointer-events-none z-0 mix-blend-screen" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[80%] h-[70%] bg-blue-900/10 blur-[120px] rounded-full pointer-events-none z-0 mix-blend-screen" />
 
@@ -347,7 +347,7 @@ const App: React.FC = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="z-40"
+            className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none"
           >
             <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
           </motion.div>
@@ -401,4 +401,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-    

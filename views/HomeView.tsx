@@ -355,8 +355,8 @@ const HomeView: React.FC<Props> = ({ state, expandedCategory, setExpandedCategor
   return (
     <div className={`flex flex-col w-full ${expandedCategory ? 'h-auto' : 'h-full'}`}>
       
-      <motion.header layout className="flex-shrink-0 mb-1 pt-1">
-        <div className="flex items-center justify-between px-2">
+      <motion.header layout className="flex-shrink-0 mb-4 pt-16 px-6">
+        <div className="flex items-center justify-between">
           <span className="text-xl font-black opacity-20 tracking-tighter">{yearShort}</span>
           <div className="flex items-center space-x-2">
             <button onClick={() => { const d = new Date(viewDate); d.setMonth(d.getMonth() - 1); onDateChange(d); }} className="p-2 text-white/20"><ChevronLeft size={28} /></button>
@@ -366,7 +366,7 @@ const HomeView: React.FC<Props> = ({ state, expandedCategory, setExpandedCategor
         </div>
       </motion.header>
 
-      <div className={`flex flex-col w-full ${!expandedCategory ? 'flex-1 justify-center' : ''}`}>
+      <div className={`flex flex-col w-full px-6 ${!expandedCategory ? 'flex-1 justify-center' : ''}`}>
         <motion.div layout transition={iosTransition} className="liquid-blur rounded-[40px] px-6 py-3 w-full flex flex-col items-center justify-center mb-2 border border-white/5 shadow-xl flex-shrink-0">
           <div className="w-10 h-10 rounded-full bg-yellow-400/10 flex items-center justify-center mb-2 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.1)]">
             <Trophy size={20} className="text-yellow-400" />
@@ -400,4 +400,3 @@ const HomeView: React.FC<Props> = ({ state, expandedCategory, setExpandedCategor
 };
 
 export default HomeView;
-    

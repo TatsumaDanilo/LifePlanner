@@ -162,4 +162,19 @@ export const initialData: AppState = {
       id: 'd2',
       type: 'drawing',
       title: 'Paesaggio Cyberpunk',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&
+      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400',
+      status: 'ongoing',
+      startDate: '2024-05-23',
+      description: 'Arte digitale usando Procreate.'
+    }
+  ],
+  waterIntake: 3,
+  brainDump: 'Ricordarsi di prenotare il ristorante per sabato. Finire il modulo React entro sera. Fare la spesa (latte, pane, uova).',
+  dailyBlocks: [
+    { time: '08:30', activity: 'Morning Skincare & Coffee', isFixed: true },
+    { time: '09:00', activity: 'Deep Work: Project React', isFixed: false },
+    { time: '11:00', activity: 'Meeting Team', isFixed: true },
+    { time: '13:00', activity: 'Pranzo e Lettura Dune', isFixed: false }
+  ],
+  dayEndTime: '23:30'
+};

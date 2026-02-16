@@ -1,4 +1,6 @@
 
+// ... existing imports ...
+// (Keeping all imports same as provided file)
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, ChevronRight, Bell, Calendar, ChevronLeft, Check, Scale, Hash, Ban, ChevronDown, Clock, Repeat, Minus, Plus, Save, X, RotateCcw, Timer, Hourglass, Trash2, ChevronUp, CornerDownRight, List } from 'lucide-react';
@@ -801,15 +803,18 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
         className="absolute bottom-0 left-0 right-0 z-40 px-6 pb-6 pt-10 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"
        >
         <div className="flex gap-4 pointer-events-auto">
-          <button 
-             onClick={step === 1 ? onBack : () => setStep(1)} 
-             className="flex-1 py-5 bg-zinc-900 border border-white/10 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] text-white active:bg-white/10 transition-colors flex items-center justify-center gap-2"
-          >
-             {step === 1 ? <><ChevronLeft size={14} /> Back</> : 'Cancel'}
-          </button>
+          {!(step === 1 && initialData) && (
+            <button 
+               onClick={step === 1 ? onBack : () => setStep(1)} 
+               className="flex-1 py-5 bg-zinc-900 border border-white/10 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] text-white active:bg-white/10 transition-colors flex items-center justify-center gap-2"
+            >
+               {step === 1 ? <><ChevronLeft size={14} /> Back</> : 'Cancel'}
+            </button>
+          )}
+          
           <button 
              onClick={step === 1 ? handleNextStep : handleFinalSave} 
-             className="flex-1 py-5 bg-white text-black rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2"
+             className={`flex-1 py-5 bg-white text-black rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2`}
           >
              {step === 1 ? <><span className="mr-1">Next</span> <ChevronRight size={14} /></> : 'Save Habit'}
           </button>

@@ -19,8 +19,8 @@ const BottomNav: React.FC<Props> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-8 pt-2 pointer-events-none">
-      <div className="liquid-blur mx-auto max-w-sm h-18 rounded-[36px] flex items-center justify-around px-2 relative pointer-events-auto shadow-2xl border border-white/10 overflow-hidden bg-black/40 backdrop-blur-3xl">
+    <nav className="w-full px-4 pb-8 pt-2 pointer-events-none flex justify-center">
+      <div className="liquid-blur w-full max-w-sm h-18 rounded-[36px] flex items-center justify-around px-2 relative pointer-events-auto shadow-2xl border border-white/10 overflow-hidden bg-black/40 backdrop-blur-3xl">
         <LayoutGroup>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;

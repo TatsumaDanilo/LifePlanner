@@ -271,7 +271,8 @@ const AddMediaForm: React.FC<Props> = ({ type, initialData, onSave, onCancel }) 
             <div className="mb-3 flex-shrink-0">
                 <div className="relative h-12">
                   <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500"><TypeIcon size={18} /></div>
-                  <input autoFocus={!isEditing} type="text" placeholder={labels.itemTitle} value={title} onChange={(e) => setTitle(e.target.value)} className="w-full h-full bg-white/[0.03] border border-white/10 rounded-[24px] pl-12 pr-14 text-sm font-bold focus:outline-none focus:border-purple-500/50 transition-all shadow-inner" required />
+                  {/* Removed autoFocus to prevent virtual keyboard induced layout shifts */}
+                  <input type="text" placeholder={labels.itemTitle} value={title} onChange={(e) => setTitle(e.target.value)} className="w-full h-full bg-white/[0.03] border border-white/10 rounded-[24px] pl-12 pr-14 text-sm font-bold focus:outline-none focus:border-purple-500/50 transition-all shadow-inner" required />
                   {type !== 'drawing' && (
                     <button type="button" onClick={fetchMetadata} className="absolute right-1 top-1 bottom-1 w-10 rounded-[20px] bg-purple-600 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform">
                         {isFetching ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
@@ -283,7 +284,8 @@ const AddMediaForm: React.FC<Props> = ({ type, initialData, onSave, onCancel }) 
             <div className="mb-3 flex-shrink-0">
                 <div className="relative h-12">
                     <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500"><Box size={18} /></div>
-                    <input autoFocus={!isEditing} type="text" placeholder={labels.collTitle} value={collectionName} onChange={(e) => setCollectionName(e.target.value)} className="w-full h-full bg-white/[0.03] border border-white/10 rounded-[24px] pl-12 pr-14 text-sm font-bold focus:outline-none focus:border-purple-500/50 transition-all shadow-inner" required />
+                    {/* Removed autoFocus to prevent virtual keyboard induced layout shifts */}
+                    <input type="text" placeholder={labels.collTitle} value={collectionName} onChange={(e) => setCollectionName(e.target.value)} className="w-full h-full bg-white/[0.03] border border-white/10 rounded-[24px] pl-12 pr-14 text-sm font-bold focus:outline-none focus:border-purple-500/50 transition-all shadow-inner" required />
                     {type !== 'drawing' && (
                         <button type="button" onClick={fetchMetadata} className="absolute right-1 top-1 bottom-1 w-10 rounded-[20px] bg-purple-600 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform">
                           {isFetching ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
