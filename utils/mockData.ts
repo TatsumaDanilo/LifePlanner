@@ -10,6 +10,16 @@ const getTodayKey = () => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper to get dates relative to today
+const getDateRelative = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const initialData: AppState = {
   habits: [
     {
@@ -21,11 +31,11 @@ export const initialData: AppState = {
       unit: 'times',
       streak: 5,
       history: {
-        '2024-05-20': 1,
-        '2024-05-21': 1,
-        '2024-05-22': 1,
-        '2024-05-23': 0,
-        '2024-05-24': 1
+        [getDateRelative(-4)]: 1,
+        [getDateRelative(-3)]: 1,
+        [getDateRelative(-2)]: 1,
+        [getDateRelative(-1)]: 0,
+        [getTodayKey()]: 1
       }
     },
     {
@@ -37,9 +47,9 @@ export const initialData: AppState = {
       unit: 'times',
       streak: 12,
       history: {
-        '2024-05-22': 1,
-        '2024-05-23': 1,
-        '2024-05-24': 1
+        [getDateRelative(-2)]: 1,
+        [getDateRelative(-1)]: 1,
+        [getTodayKey()]: 1
       }
     },
     {
@@ -51,7 +61,7 @@ export const initialData: AppState = {
       unit: 'minutes',
       streak: 3,
       history: {
-        '2024-05-24': 15
+        [getTodayKey()]: 15
       }
     },
     {
@@ -63,13 +73,13 @@ export const initialData: AppState = {
       unit: 'kg',
       streak: 0,
       history: {
-        '2024-05-18': 83.2,
-        '2024-05-19': 82.8,
-        '2024-05-20': 82.5,
-        '2024-05-21': 82.1,
-        '2024-05-22': 81.8,
-        '2024-05-23': 81.5,
-        '2024-05-24': 81.0
+        [getDateRelative(-6)]: 83.2,
+        [getDateRelative(-5)]: 82.8,
+        [getDateRelative(-4)]: 82.5,
+        [getDateRelative(-3)]: 82.1,
+        [getDateRelative(-2)]: 81.8,
+        [getDateRelative(-1)]: 81.5,
+        [getTodayKey()]: 81.0
       }
     }
   ],
@@ -187,5 +197,5 @@ export const initialData: AppState = {
       { time: '13:00', activity: 'Pranzo e Lettura Dune', isFixed: false, mediaId: 'b2' }
     ]
   },
-  dayEndTime: '23:30'
+  dayEndTime: '00:00'
 };

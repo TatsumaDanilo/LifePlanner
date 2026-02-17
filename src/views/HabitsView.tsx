@@ -1,11 +1,12 @@
 
+// Complete implementation of HabitsView with support for Regular, Weight and Quit habits.
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import { 
   Sun, Moon, Zap, ChevronLeft, ChevronRight, Calendar, Clock, Check, Plus, Minus, 
   Play, Pause, RotateCcw, X, CheckSquare, Timer as TimerIcon, ChevronsRight, 
   Flame, AlertCircle, BarChart2, LayoutGrid, Grid, CalendarDays, Trash2, Edit3, Scale, 
-  TrendingUp, List as ListIcon, CornerDownRight 
+  TrendingUp, List as ListIcon, CornerDownRight, Ban, TimerReset 
 } from 'lucide-react';
 import { AppState, Habit, MicroHabit } from '../types';
 
@@ -189,7 +190,6 @@ const getStartOfWeek = (date: Date) => {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d.setDate(diff));
-  if (day === 0) monday.setDate(monday.getDate() - 7);
   return monday;
 };
 
@@ -249,6 +249,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const config = getHabitConfig(habit);
   
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
+  const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
   const isFlexible = config.type === 'days_per'; 
   const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
   const currentWeeklyCompletions = getWeeklyCompletions(habit, currentDate);
@@ -288,6 +289,32 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
       }
   };
 
+  const [quitDuration, setQuitDuration] = useState<{days: number, hours: number, minutes: number, seconds: number} | null>(null);
+
+  useEffect(() => {
+      if (!isQuit) return;
+      const startStr = habit.description?.replace('Start: ', '');
+      if (!startStr) return;
+      
+      const update = () => {
+          const start = new Date(startStr);
+          const now = new Date();
+          const diff = now.getTime() - start.getTime();
+          if (diff < 0) {
+              setQuitDuration({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+              return;
+          }
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setQuitDuration({ days, hours, minutes, seconds });
+      };
+      update();
+      const interval = setInterval(update, 1000); 
+      return () => clearInterval(interval);
+  }, [habit, isQuit]);
+
   const weekData = useMemo(() => {
     const d = new Date(currentDate);
     const day = d.getDay();
@@ -302,45 +329,70 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
     const adjustedTodayKey = getLocalDateKey(now);
 
     const days = [];
+    let quitStartDate: Date | null = null;
+    if (isQuit && habit.description) {
+        const s = habit.description.replace('Start: ', '');
+        if (s) quitStartDate = new Date(s);
+    }
 
     for (let i = 0; i < 7; i++) {
         const d = new Date(startOfWeek);
         d.setDate(startOfWeek.getDate() + i);
         const k = getLocalDateKey(d);
         
-        const valEntry = habit.history[k];
-        let val = 0;
-        let isComplete = false;
-        let isSkip = false;
-
-        if (typeof valEntry === 'number') {
-            val = valEntry;
-            isSkip = val === -1;
-            isComplete = val >= habit.goal;
-        } else if (valEntry && typeof valEntry === 'object') {
-             const struct = getDailyStructure(habit, d);
-             if (struct.length > 0) {
-                const { percentage } = getStructureProgress(habit, k, struct);
-                val = percentage > 0 ? 1 : 0;
-                isComplete = percentage >= 100;
-             }
-        }
-
         let status: 'completed' | 'partial' | 'skipped' | 'failed' | 'empty' = 'empty';
+        let resetCount = 0;
+
+        if (isQuit) {
+             const resets = typeof habit.history[k] === 'number' ? habit.history[k] as number : 0;
+             if (resets > 0) {
+                 status = 'failed';
+                 resetCount = resets;
+             } else if (quitStartDate) {
+                 const cellDateStart = new Date(d);
+                 cellDateStart.setHours(0,0,0,0);
+                 const quitDateStart = new Date(quitStartDate);
+                 quitDateStart.setHours(0,0,0,0);
+
+                 if (cellDateStart.getTime() === quitDateStart.getTime()) {
+                     status = 'failed';
+                 } else if (d >= quitStartDate && d <= now) {
+                     status = 'completed';
+                 }
+             }
+        } else {
+            const valEntry = habit.history[k];
+            let val = 0;
+            let isComplete = false;
+            let isSkip = false;
+
+            if (typeof valEntry === 'number') {
+                val = valEntry;
+                isSkip = val === -1;
+                isComplete = val >= habit.goal;
+            } else if (valEntry && typeof valEntry === 'object') {
+                const struct = getDailyStructure(habit, d);
+                if (struct.length > 0) {
+                    const { percentage } = getStructureProgress(habit, k, struct);
+                    val = percentage > 0 ? 1 : 0;
+                    isComplete = percentage >= 100;
+                }
+            }
+
+            if (isSkip) { status = 'skipped'; } 
+            else if (isComplete) { status = 'completed'; } 
+            else if (val > 0) { status = 'partial'; } 
+            else if (k < adjustedTodayKey) { status = 'failed'; }
+        }
         
-        if (isSkip) { status = 'skipped'; } 
-        else if (isComplete) { status = 'completed'; } 
-        else if (val > 0) { status = 'partial'; } 
-        else if (k < adjustedTodayKey) { status = 'failed'; } 
-        
-        days.push({ dayName: d.toLocaleDateString('en-US', { weekday: 'narrow' }), status, isToday: k === adjustedTodayKey });
+        days.push({ dayName: d.toLocaleDateString('en-US', { weekday: 'narrow' }), status, isToday: k === adjustedTodayKey, resetCount });
     }
     return days;
-  }, [habit.history, currentDate, habit.goal, dayEndTime, habit]);
+  }, [habit.history, currentDate, habit.goal, dayEndTime, habit, isQuit]);
 
   const getDynamicStatusClasses = (status: string, isToday: boolean) => {
       const successClass = 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'; 
-      const shouldUseGreen = (isFlexible && isWeeklyTargetMet) || (!isFlexible);
+      const shouldUseGreen = isQuit || (isFlexible && isWeeklyTargetMet) || (!isFlexible);
       if (status === 'completed') {
           return shouldUseGreen ? successClass : `${styles.soft} border-${habit.color}-500/30 ${styles.text}`;
       }
@@ -357,7 +409,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (progressPercent / 100) * circumference;
   
-  const showDetailCount = hasStructure || (!isWeight);
+  const showDetailCount = hasStructure || (!isWeight && !isQuit);
 
   return (
     <div className="relative w-full mb-3 last:mb-0">
@@ -367,7 +419,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
             <button onClick={(e) => { e.stopPropagation(); onEditRequest(); animate(x, 0); }} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 active:scale-90 transition-transform"><Edit3 size={18} /></button>
          </div>
          <div className="flex items-center gap-3 w-[110px] justify-end pointer-events-auto">
-            {!isWeight && (
+            {!isWeight && !isQuit && (
                 <>
                 <button onClick={(e) => handleAction(e, onTimer)} className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 active:scale-90 transition-transform"><TimerIcon size={18} /></button>
                 <button onClick={(e) => handleAction(e, onSkip)} className="w-10 h-10 rounded-full bg-zinc-700/50 text-zinc-400 flex items-center justify-center border border-white/10 active:scale-90 transition-transform"><ChevronsRight size={18} /></button>
@@ -379,7 +431,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
       <motion.div
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: isWeight ? 0 : -120, right: 120 }}
+        dragConstraints={{ left: (isWeight || isQuit) ? 0 : -120, right: 120 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
         className="relative z-20 touch-pan-y transform-gpu"
@@ -394,23 +446,51 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
                     <h3 className="text-sm font-black uppercase tracking-tight text-white leading-tight">{habit.name}</h3>
-                    {isWeight ? (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Scale size={10} className="text-zinc-400" /></div>) : (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${habit.streak > 0 ? styles.text : 'text-zinc-600'}`} fill={habit.streak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${habit.streak > 0 ? 'text-white' : 'text-zinc-600'}`}>{habit.streak}</span></div>)}
+                    {isWeight && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Scale size={10} className="text-zinc-400" /></div>)}
+                    {isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20"><Ban size={10} className="text-red-400" /></div>)}
+                    {!isWeight && !isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${habit.streak > 0 ? styles.text : 'text-zinc-600'}`} fill={habit.streak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${habit.streak > 0 ? 'text-white' : 'text-zinc-600'}`}>{habit.streak}</span></div>)}
                 </div>
                 <div className="flex items-center gap-2">
                     {showDetailCount && (<div className="px-2 py-1 text-right"><span className="text-[10px] font-black text-white">{displayValue}</span><span className="text-[9px] font-bold text-zinc-500"> / {dailyGoal} {hasStructure ? 'micro' : (habit.unit === 'minutes' ? 'min' : (habit.unit === 'times' ? '' : habit.unit))}</span></div>)}
+                    
+                    {isQuit && quitDuration && (
+                        <div className="flex flex-col items-end mr-1">
+                            <span className="text-[12px] font-black text-white leading-none tabular-nums">
+                                {quitDuration.days}d {quitDuration.hours}h <span className="opacity-50">{quitDuration.minutes}m {quitDuration.seconds}s</span>
+                            </span>
+                            <span className="text-[9px] font-bold text-zinc-500">Quit Time</span>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2">
-                        {isFlexible && !isWeight && (<div className="flex flex-col gap-[3px]">{Array.from({length: weeklyTarget}).map((_, idx) => { const reverseIdx = weeklyTarget - 1 - idx; const isFilled = reverseIdx < currentWeeklyCompletions; return (<div key={idx} className={`w-1 h-1 rounded-full transition-colors ${isFilled ? styles.bg.replace('/10', '') : 'bg-zinc-800'}`} />); })}</div>)}
+                        {isFlexible && !isWeight && !isQuit && (<div className="flex flex-col gap-[3px]">{Array.from({length: weeklyTarget}).map((_, idx) => { const reverseIdx = weeklyTarget - 1 - idx; const isFilled = reverseIdx < currentWeeklyCompletions; return (<div key={idx} className={`w-1 h-1 rounded-full transition-colors ${isFilled ? styles.bg.replace('/10', '') : 'bg-zinc-800'}`} />); })}</div>)}
                         
                         <button onClick={(e) => { e.stopPropagation(); hasStructure ? onClick() : onQuickAdd(e); }} className="relative w-10 h-10 flex items-center justify-center active:scale-90 transition-transform">
-                            {!isWeight && (<svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full -rotate-90"><circle cx="20" cy="20" r={radius} fill="transparent" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4 2" className="text-zinc-800" /><circle cx="20" cy="20" r={radius} fill="transparent" stroke={baseHex} strokeWidth="2.5" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-500 ease-out drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" /></svg>)}
-                            <div className={`w-7 h-7 rounded-[8px] ${styles.accent} text-white flex items-center justify-center shadow-lg border border-white/10 z-10`}>
-                                {hasStructure ? <ListIcon size={14} strokeWidth={3} /> : <Plus size={14} strokeWidth={3} />}
-                            </div>
+                            {!isWeight && !isQuit && (<svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full -rotate-90"><circle cx="20" cy="20" r={radius} fill="transparent" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4 2" className="text-zinc-800" /><circle cx="20" cy="20" r={radius} fill="transparent" stroke={baseHex} strokeWidth="2.5" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-500 ease-out drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" /></svg>)}
+                            
+                            {isQuit ? (
+                                <div className="w-10 h-10 rounded-[12px] bg-zinc-800 border border-white/10 text-red-400 flex items-center justify-center shadow-lg active:bg-red-500 active:text-white transition-colors">
+                                    <RotateCcw size={16} strokeWidth={2.5} />
+                                </div>
+                            ) : (
+                                <div className={`w-7 h-7 rounded-[8px] ${styles.accent} text-white flex items-center justify-center shadow-lg border border-white/10 z-10`}>
+                                    {hasStructure ? <ListIcon size={14} strokeWidth={3} /> : <Plus size={14} strokeWidth={3} />}
+                                </div>
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
-            {!isWeight && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>{weekData.map((day, idx) => (<div key={idx} className="flex flex-col items-center gap-1 flex-1"><div className={`w-full aspect-[4/3] max-w-[36px] rounded-[10px] flex items-center justify-center transition-all border ${getDynamicStatusClasses(day.status, day.isToday)} ${day.isToday ? 'ring-1 ring-white' : ''}`} style={{ borderRadius: '10px' }}></div><span className={`text-[8px] font-bold uppercase ${day.isToday ? 'text-white' : 'text-zinc-600'}`}>{day.dayName}</span></div>))}</div>)}
+            {!isWeight && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>
+                {weekData.map((day, idx) => (
+                    <div key={idx} className="flex flex-col items-center gap-1 flex-1">
+                        <div className={`w-full aspect-[4/3] max-w-[36px] rounded-[10px] flex items-center justify-center transition-all border ${getDynamicStatusClasses(day.status, day.isToday)} ${day.isToday ? 'ring-1 ring-white' : ''}`} style={{ borderRadius: '10px' }}>
+                            {day.resetCount > 1 && <span className="text-[7px] font-black leading-none">{day.resetCount}x</span>}
+                        </div>
+                        <span className={`text-[8px] font-bold uppercase ${day.isToday ? 'text-white' : 'text-zinc-600'}`}>{day.dayName}</span>
+                    </div>
+                ))}
+            </div>)}
           </motion.div>
       </motion.div>
     </div>
@@ -634,13 +714,13 @@ const HabitsReportOverlay: React.FC<HabitReportOverlayProps> = ({ habits, onClos
 interface QuickTimerModalProps { habit: Habit; onClose: () => void; onSave: (val: number) => void; }
 const QuickTimerModal: React.FC<QuickTimerModalProps> = ({ habit, onClose, onSave }) => {
     const styles = getColorClasses(habit.color);
-    const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>('stopwatch');
+    const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>(habit.timerDefault || 'stopwatch');
     const [timerRunning, setTimerRunning] = useState(false);
     const [timerSeconds, setTimerSeconds] = useState(0);
-    const [initialCountdown, setInitialCountdown] = useState(habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60);
+    const [initialCountdown, setInitialCountdown] = useState(habit.timerDuration ? habit.timerDuration * 60 : (habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60));
     const intervalRef = useRef<number | null>(null);
 
-    useEffect(() => { setTimerRunning(false); if (timerMode === 'stopwatch') { setTimerSeconds(0); } else { const defaultSecs = habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60; setInitialCountdown(defaultSecs); setTimerSeconds(defaultSecs); } }, [timerMode, habit.goal, habit.unit]);
+    useEffect(() => { setTimerRunning(false); if (timerMode === 'stopwatch') { setTimerSeconds(0); } else { const defaultSecs = habit.timerDuration ? habit.timerDuration * 60 : (habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60); setInitialCountdown(defaultSecs); setTimerSeconds(defaultSecs); } }, [timerMode, habit.goal, habit.unit, habit.timerDuration]);
     useEffect(() => { if (timerRunning) { intervalRef.current = window.setInterval(() => { if (timerMode === 'stopwatch') { setTimerSeconds(s => s + 1); } else { setTimerSeconds(s => { if (s <= 1) { setTimerRunning(false); return 0; } return s - 1; }); } }, 1000); } else if (intervalRef.current) { window.clearInterval(intervalRef.current); } return () => { if (intervalRef.current) window.clearInterval(intervalRef.current); }; }, [timerRunning, timerMode]);
     
     const handleSave = () => { let secondsToLog = 0; if (timerMode === 'stopwatch') { secondsToLog = timerSeconds; } else { secondsToLog = initialCountdown - timerSeconds; } if (secondsToLog > 0) { const valToAdd = habit.unit === 'minutes' ? Math.ceil(secondsToLog / 60) : 1; onSave(valToAdd); } onClose(); };
@@ -710,22 +790,21 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
 
   const lastRecordedWeight = historyEntries.length > 0 ? historyEntries[historyEntries.length - 1].value : 0;
 
-  const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>('stopwatch');
+  const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>(habit.timerDefault || 'stopwatch');
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
-  const [initialCountdown, setInitialCountdown] = useState(habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60);
+  const [initialCountdown, setInitialCountdown] = useState(habit.timerDuration ? habit.timerDuration * 60 : (habit.unit === 'minutes' ? habit.goal * 60 : 15 * 60));
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
-  useEffect(() => { setTimerRunning(false); if(timerMode === 'stopwatch') setTimerSeconds(0); else { const d = habit.unit === 'minutes' ? habit.goal*60 : 15*60; setInitialCountdown(d); setTimerSeconds(d); } }, [timerMode, habit.goal, habit.unit, activeTab]); 
+  useEffect(() => { setTimerRunning(false); if(timerMode === 'stopwatch') setTimerSeconds(0); else { const d = habit.timerDuration ? habit.timerDuration * 60 : (habit.unit === 'minutes' ? habit.goal*60 : 15*60); setInitialCountdown(d); setTimerSeconds(d); } }, [timerMode, habit.goal, habit.unit, habit.timerDuration, activeTab]); 
   useEffect(() => { if(timerRunning) { intervalRef.current = window.setInterval(() => { if(timerMode === 'stopwatch') setTimerSeconds(s => s + 1); else setTimerSeconds(s => { if(s<=1){ setTimerRunning(false); return 0;} return s-1; }); }, 1000); } else if (intervalRef.current) window.clearInterval(intervalRef.current); return () => { if(intervalRef.current) window.clearInterval(intervalRef.current); }; }, [timerRunning, timerMode]);
 
   const updateValue = (delta: number) => {
     const baseVal = currentValue === -1 ? 0 : currentValue;
     const newVal = Math.max(0, baseVal + delta);
     const newHistory = { ...habit.history, [dateKey]: newVal };
-    let newStreak = habit.streak; 
-    const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory, streak: newStreak } : h);
+    const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory } : h);
     setState({ ...state, habits: updatedHabits });
   };
 
@@ -972,17 +1051,25 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                          )}
 
                          {activeTab === 'timer' && !isWeight && (
-                             <motion.div key="timer" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-center pb-48 pt-4 px-6 h-full">
-                                <div className="flex bg-zinc-800 p-1 rounded-2xl border border-white/5 mb-6 w-full max-w-[200px]">
-                                    <button onClick={() => setTimerMode('stopwatch')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'stopwatch' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Stopwatch</button>
-                                    <button onClick={() => setTimerMode('countdown')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'countdown' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Timer</button>
+                             <motion.div key="timer" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-between pb-48 pt-4">
+                                <div className="flex flex-col items-center flex-shrink-0 px-6 w-full">
+                                    <div className="flex bg-zinc-800 p-1 rounded-2xl border border-white/5 w-full max-w-[200px]">
+                                        <button onClick={() => setTimerMode('stopwatch')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'stopwatch' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Stopwatch</button>
+                                        <button onClick={() => setTimerMode('countdown')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'countdown' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Timer</button>
+                                    </div>
                                 </div>
-                                <div className="w-56 h-56 rounded-full border-4 border-zinc-800 flex items-center justify-center mb-6 relative flex-shrink-0 bg-zinc-900">
-                                    <div className="absolute inset-0 rounded-full border-4 border-white/10" />
-                                    {timerRunning && (<motion.div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-b-transparent border-l-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} />)}
-                                    <div className="text-5xl font-black font-mono tracking-tighter tabular-nums text-white">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div>
+                                <div className="flex-1 w-full flex items-center justify-center min-h-0 py-4">
+                                    <div className="w-56 h-56 rounded-full border-4 border-zinc-800 flex items-center justify-center relative flex-shrink-0 bg-zinc-900">
+                                        <div className="absolute inset-0 rounded-full border-4 border-white/10" />
+                                        {timerRunning && (<motion.div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-b-transparent border-l-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} />)}
+                                        <div className="text-5xl font-black font-mono tracking-tighter tabular-nums text-white">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-6"><button onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 transition-transform border border-white/5"><RotateCcw size={20}/></button><button onClick={() => setTimerRunning(!timerRunning)} className={`w-20 h-20 rounded-[30px] flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-xl active:scale-95 transition-transform`}>{timerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button><button onClick={handleTimerSave} className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow-lg"><Check size={24}/></button></div>
+                                <div className="flex items-center justify-center gap-6 w-full px-6 flex-shrink-0">
+                                    <button onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 transition-transform border border-white/5"><RotateCcw size={20}/></button>
+                                    <button onClick={() => setTimerRunning(!timerRunning)} className={`w-20 h-20 rounded-[30px] flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-xl active:scale-95 transition-transform`}>{timerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button>
+                                    <button onClick={handleTimerSave} className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow-lg"><Check size={24}/></button>
+                                </div>
                              </motion.div>
                          )}
                     </AnimatePresence>
@@ -1006,8 +1093,6 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
   const [deleteHabit, setDeleteHabit] = useState<Habit | null>(null);
   const [quickTimerHabit, setQuickTimerHabit] = useState<Habit | null>(null);
   const [weightLogHabit, setWeightLogHabit] = useState<Habit | null>(null);
-  
-  // State for date navigation
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const selectedHabit = state.habits.find(h => h.id === selectedHabitId);
@@ -1016,7 +1101,6 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
     if (onDetailOpen) onDetailOpen(!!selectedHabitId);
   }, [selectedHabitId, onDetailOpen]);
 
-  // Helper for date navigation
   const changeDate = (days: number) => {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() + days);
@@ -1027,20 +1111,14 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
     const dateKey = getLocalDateKey(currentDate);
     const entry = habit.history[dateKey];
     
-    // Explicitly handle entry type to fix TS "unknown" type error
     let currentVal = 0;
     if (typeof entry === 'number') {
         currentVal = entry === -1 ? 0 : entry;
-    } else if (entry && typeof entry === 'object' && 'completedIds' in entry) {
-        currentVal = 0;
     }
     
     const newVal = Math.max(0, currentVal + delta);
-    
     const newHistory = { ...habit.history, [dateKey]: newVal };
-    let newStreak = habit.streak; 
-    
-    const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory, streak: newStreak } : h);
+    const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory } : h);
     setState({ ...state, habits: updatedHabits });
   };
 
@@ -1070,7 +1148,6 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
   };
 
   const sortedHabits = [...state.habits].sort((a, b) => {
-      // Sort by time of day (morning -> day -> evening)
       const times = { morning: 0, any: 1, evening: 2 };
       return times[a.timeOfDay] - times[b.timeOfDay];
   });
@@ -1084,34 +1161,16 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">Consistency is Key</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => setShowReport(true)}
-                        className="w-12 h-12 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 active:bg-white/10 active:text-white transition-colors"
-                    >
-                        <BarChart2 size={20} />
-                    </button>
-                    {/* ADD HABIT BUTTON */}
-                    <button 
-                        onClick={onAddHabit}
-                        className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform"
-                    >
-                        <Plus size={24} />
-                    </button>
+                    <button onClick={() => setShowReport(true)} className="w-12 h-12 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 active:bg-white/10 active:text-white transition-colors"><BarChart2 size={20} /></button>
+                    <button onClick={onAddHabit} className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform"><Plus size={24} /></button>
                 </div>
             </div>
 
-            {/* DATE NAVIGATION */}
             <div className="flex items-center justify-between bg-zinc-900/50 rounded-[20px] p-1 border border-white/5">
                 <button onClick={() => changeDate(-1)} className="w-12 h-12 flex items-center justify-center text-zinc-400 active:text-white active:bg-white/5 rounded-[16px] transition-colors"><ChevronLeft size={20}/></button>
                 <div className="flex flex-col items-center">
-                    <span className="text-sm font-black uppercase tracking-widest text-white">
-                        {currentDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
-                    </span>
-                    {currentDate.toDateString() === new Date().toDateString() ? (
-                        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Today</span>
-                    ) : (
-                        <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">{currentDate.getFullYear()}</span>
-                    )}
+                    <span className="text-sm font-black uppercase tracking-widest text-white">{currentDate.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                    {currentDate.toDateString() === new Date().toDateString() ? (<span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Today</span>) : (<span className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider">{currentDate.getFullYear()}</span>)}
                 </div>
                 <button onClick={() => changeDate(1)} className="w-12 h-12 flex items-center justify-center text-zinc-400 active:text-white active:bg-white/5 rounded-[16px] transition-colors"><ChevronRight size={20}/></button>
             </div>
@@ -1126,13 +1185,7 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
                         currentDate={currentDate}
                         dayEndTime={state.dayEndTime || "00:00"}
                         onClick={() => setSelectedHabitId(habit.id)}
-                        onQuickAdd={(e) => {
-                             if (habit.unit === 'kg' || habit.unit === 'lbs') {
-                                 setWeightLogHabit(habit);
-                             } else {
-                                 updateHabitValue(habit, 1);
-                             }
-                        }}
+                        onQuickAdd={(e) => { if (habit.unit === 'kg' || habit.unit === 'lbs') { setWeightLogHabit(habit); } else { updateHabitValue(habit, 1); } }}
                         onSkip={(e) => setSkipHabit(habit)}
                         onTimer={(e) => setQuickTimerHabit(habit)}
                         onDeleteRequest={() => setDeleteHabit(habit)}
@@ -1140,9 +1193,7 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
                      />
                  )) : (
                      <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                         <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4">
-                             <CheckSquare size={32} />
-                         </div>
+                         <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4"><CheckSquare size={32} /></div>
                          <p className="text-xs font-black uppercase tracking-widest">No Habits Yet</p>
                      </div>
                  )}
@@ -1150,53 +1201,12 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
         </div>
 
         <AnimatePresence>
-            {showReport && (
-                <HabitsReportOverlay 
-                    habits={state.habits} 
-                    onClose={() => setShowReport(false)} 
-                    dayEndTime={state.dayEndTime || "00:00"}
-                />
-            )}
-            {selectedHabit && (
-                <HabitDetailOverlay 
-                    habit={selectedHabit} 
-                    onClose={() => setSelectedHabitId(null)}
-                    state={state}
-                    setState={setState}
-                    currentDate={currentDate}
-                    onAddHabit={() => setWeightLogHabit(selectedHabit)}
-                    dayEndTime={state.dayEndTime || "00:00"}
-                />
-            )}
-            {skipHabit && (
-                <SkipConfirmModal 
-                    habit={skipHabit} 
-                    onConfirm={handleSkipConfirm} 
-                    onCancel={() => setSkipHabit(null)} 
-                />
-            )}
-            {deleteHabit && (
-                <DeleteConfirmModal 
-                    habit={deleteHabit} 
-                    onConfirm={handleDeleteConfirm} 
-                    onCancel={() => setDeleteHabit(null)} 
-                />
-            )}
-            {quickTimerHabit && (
-                <QuickTimerModal 
-                    habit={quickTimerHabit} 
-                    onClose={() => setQuickTimerHabit(null)} 
-                    onSave={(val) => updateHabitValue(quickTimerHabit, val)} 
-                />
-            )}
-            {weightLogHabit && (
-                <WeightLogModal 
-                    habit={weightLogHabit} 
-                    currentDate={currentDate}
-                    onClose={() => setWeightLogHabit(null)} 
-                    onSave={(val) => { updateWeightValue(weightLogHabit, val); setWeightLogHabit(null); }} 
-                />
-            )}
+            {showReport && (<HabitsReportOverlay habits={state.habits} onClose={() => setShowReport(false)} dayEndTime={state.dayEndTime || "00:00"} />)}
+            {selectedHabit && (<HabitDetailOverlay habit={selectedHabit} onClose={() => setSelectedHabitId(null)} state={state} setState={setState} currentDate={currentDate} onAddHabit={() => setWeightLogHabit(selectedHabit)} dayEndTime={state.dayEndTime || "00:00"} />)}
+            {skipHabit && (<SkipConfirmModal habit={skipHabit} onConfirm={handleSkipConfirm} onCancel={() => setSkipHabit(null)} />)}
+            {deleteHabit && (<DeleteConfirmModal habit={deleteHabit} onConfirm={handleDeleteConfirm} onCancel={() => setDeleteHabit(null)} />)}
+            {quickTimerHabit && (<QuickTimerModal habit={quickTimerHabit} onClose={() => setQuickTimerHabit(null)} onSave={(val) => updateHabitValue(quickTimerHabit, val)} />)}
+            {weightLogHabit && (<WeightLogModal habit={weightLogHabit} currentDate={currentDate} onClose={() => setWeightLogHabit(null)} onSave={(val) => { updateWeightValue(weightLogHabit, val); setWeightLogHabit(null); }} />)}
         </AnimatePresence>
     </div>
   );

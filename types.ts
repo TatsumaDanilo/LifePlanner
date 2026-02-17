@@ -26,6 +26,10 @@ export interface Habit {
 
   // Notification settings
   reminders?: { time: string; days: number[] }[];
+
+  // Timer settings
+  timerDefault?: 'stopwatch' | 'countdown';
+  timerDuration?: number; // in minutes
 }
 
 export interface LogEntry {
