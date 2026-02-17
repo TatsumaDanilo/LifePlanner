@@ -273,7 +273,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
     return `${hour.toString().padStart(2, '0')}:${minute}`;
   });
 
-  // Calculate visible hours based on expansion state (Restored)
+  // Calculate visible hours based on expansion state
   const visibleHours = useMemo(() => {
       if (isAgendaExpanded) return hours;
       
@@ -320,31 +320,33 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
   const handleSaveBlock = (activity: string, habitId?: string, mediaId?: string, addReminder?: boolean) => {
       if (!editorData || !activity.trim()) return;
 
+      const normalizedActivity = activity.trim().toLowerCase();
       const dateKey = getLocalDateKey(selectedDate);
       const dayBlocks = state.dailyBlocks[dateKey] || [];
 
-      // 0. Ensure Habit ID is linked if name matches exactly (Robustness for manual text entry)
-      if (!habitId && activity.trim()) {
-          const matched = state.habits.find(h => h.name.toLowerCase() === activity.trim().toLowerCase());
-          if (matched) habitId = matched.id;
+      // 1. Risoluzione ID Forzata (Immediata)
+      let finalHabitId = habitId;
+      if (!finalHabitId) {
+          const matched = state.habits.find(h => h.name.trim().toLowerCase() === normalizedActivity);
+          if (matched) finalHabitId = matched.id;
       }
 
+      // 2. Creazione blocco
       const newBlock: DailyBlock = {
           time: editorData.time,
           activity: activity,
           isFixed: false,
-          habitId, // Save ID directly
-          mediaId  // Save ID directly
+          habitId: finalHabitId,
+          mediaId
       };
 
       let updatedHabits = [...state.habits];
 
-      // 1. Mandatory Reminder Update
-      if (habitId && addReminder) {
+      // Gestione Reminder
+      if (finalHabitId && addReminder) {
           updatedHabits = updatedHabits.map(h => {
-              if (h.id === habitId) {
+              if (h.id === finalHabitId) {
                   const newReminders = [...(h.reminders || [])];
-                  // Prevent duplicates just in case
                   if (!newReminders.some(r => r.time === editorData.time)) {
                       newReminders.push({ time: editorData.time, days: [0,1,2,3,4,5,6] });
                   }
@@ -354,77 +356,21 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           });
       }
 
-      // 2. Prepare Updated Blocks for the CURRENT DATE
+      // 3. Salvataggio immediato
       const otherBlocks = dayBlocks.filter(b => b.time !== editorData.time);
-      let updatedBlocks = [...otherBlocks, newBlock];
-      
-      // 3. Smart Stacking Check Logic
-      // Only execute this logic if we have a valid habit and we're not just editing an existing block's text
-      if (habitId) {
-          // Use state.habits to be absolutely sure we have the definition
-          const currentHabit = state.habits.find(h => h.id === habitId);
-          
-          if (currentHabit) {
-              let parentHabit: Habit | undefined;
-              
-              // A. Resolve Dependency - ID Priority
-              if (currentHabit.stackedAfterId) {
-                  parentHabit = state.habits.find(h => h.id === currentHabit.stackedAfterId);
-              }
-              
-              // B. Resolve Dependency - Name Fallback (if ID failed or missing)
-              if (!parentHabit && currentHabit.stackTrigger) {
-                  const triggerName = currentHabit.stackTrigger.trim().toLowerCase();
-                  parentHabit = state.habits.find(h => h.name.toLowerCase() === triggerName);
-              }
+      const blocksToSave = [...otherBlocks, newBlock];
+      blocksToSave.sort((a, b) => a.time.localeCompare(b.time));
 
-              if (parentHabit) {
-                  // Check if Parent is already in the schedule (anywhere TODAY)
-                  // Note: updatedBlocks currently includes the block we just added (newBlock).
-                  // We check if the PARENT is already present in ANY slot.
-                  const isParentScheduled = updatedBlocks.some(b => b.habitId === parentHabit!.id);
-                  
-                  // ONLY PROPOSE if parent is NOT scheduled
-                  if (!isParentScheduled) {
-                      const currentIndex = hours.indexOf(editorData.time);
-                      const prevIndex = currentIndex - 1; // Exactly 30 mins before
-                      
-                      if (prevIndex >= 0) {
-                          const prevTime = hours[prevIndex];
-                          
-                          // Check if the previous slot is occupied IN THE CURRENT DAY
-                          const isPrevSlotOccupied = updatedBlocks.some(b => b.time === prevTime);
-                          
-                          if (!isPrevSlotOccupied) {
-                              const confirmMessage = `Smart Stacking: "${currentHabit.name}" di solito segue "${parentHabit.name}".\n\nVuoi aggiungere "${parentHabit.name}" alle ${prevTime}?`;
-                              
-                              if (window.confirm(confirmMessage)) {
-                                  const parentBlock: DailyBlock = {
-                                      time: prevTime,
-                                      activity: parentHabit.name,
-                                      isFixed: false,
-                                      habitId: parentHabit.id
-                                  };
-                                  updatedBlocks.push(parentBlock);
-                              }
-                          }
-                      }
-                  }
-              }
-          }
-      }
-
-      // 4. Final Sort and Save to specific date
-      updatedBlocks.sort((a, b) => a.time.localeCompare(b.time));
-      
-      setState({ 
+      const newState = { 
           ...state, 
           dailyBlocks: {
               ...state.dailyBlocks,
-              [dateKey]: updatedBlocks
+              [dateKey]: blocksToSave
           },
           habits: updatedHabits 
-      });
+      };
+      
+      setState(newState);
       setEditorData(null);
   };
 
@@ -433,28 +379,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
       const habit = state.habits.find(h => h.id === habitId);
       if (!habit) return;
 
-      // Dependency Check Logic (ID-based with legacy fallback)
       const dateKey = getLocalDateKey(selectedDate);
-      let dependencyId = habit.stackedAfterId;
-      
-      // Legacy fallback
-      if (!dependencyId && habit.stackTrigger) {
-          const dep = state.habits.find(h => h.name.toLowerCase() === habit.stackTrigger?.toLowerCase());
-          if (dep) dependencyId = dep.id;
-      }
-
-      if (dependencyId) {
-          const triggerHabit = state.habits.find(h => h.id === dependencyId);
-          if (triggerHabit) {
-              const triggerEntry = triggerHabit.history[dateKey];
-              const isTriggerDone = typeof triggerEntry === 'number' ? triggerEntry >= triggerHabit.goal : (triggerEntry && triggerEntry.completedIds?.length > 0);
-              
-              if (!isTriggerDone) {
-                  alert(`Locked! Complete "${triggerHabit.name}" first.`);
-                  return;
-              }
-          }
-      }
 
       // Update Habit History
       const currentVal = (typeof habit.history[dateKey] === 'number') ? habit.history[dateKey] as number : 0;
@@ -587,27 +512,6 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                         const linkedMedia = block?.mediaId ? state.media.find(m => m.id === block.mediaId) : null;
                         const isCurrentSlot = time === currentTimeSlot;
 
-                        // Dependency Lock Logic
-                        let isLocked = false;
-                        if (linkedHabit) {
-                            // Check ID based
-                            let depId = linkedHabit.stackedAfterId;
-                            // Fallback to name based
-                            if (!depId && linkedHabit.stackTrigger) {
-                                const dep = state.habits.find(h => h.name.toLowerCase() === linkedHabit.stackTrigger?.toLowerCase());
-                                if (dep) depId = dep.id;
-                            }
-
-                            if (depId) {
-                                const triggerHabit = state.habits.find(h => h.id === depId);
-                                if (triggerHabit) {
-                                    const triggerEntry = triggerHabit.history[dateKey];
-                                    const isTriggerDone = typeof triggerEntry === 'number' ? triggerEntry >= triggerHabit.goal : (triggerEntry && triggerEntry.completedIds?.length > 0);
-                                    if (!isTriggerDone) isLocked = true;
-                                }
-                            }
-                        }
-
                         // Completion Status
                         let isCompleted = false;
                         if (linkedHabit) {
@@ -654,10 +558,9 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                                             {linkedHabit && (
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); handleToggleComplete(time, linkedHabit.id, linkedMedia?.id); }}
-                                                    disabled={isLocked}
-                                                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${isLocked ? 'bg-zinc-800 text-zinc-600' : isCompleted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/10 text-white/20 hover:bg-white/20'}`}
+                                                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${isCompleted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/10 text-white/20 hover:bg-white/20'}`}
                                                 >
-                                                    {isLocked ? <Lock size={10} /> : <Check size={12} strokeWidth={isCompleted ? 4 : 2} />}
+                                                    <Check size={12} strokeWidth={isCompleted ? 4 : 2} />
                                                 </button>
                                             )}
                                             <div className="flex items-center gap-2">

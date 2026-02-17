@@ -239,8 +239,7 @@ const App: React.FC = () => {
               history: {},
               structure: habitData.structure, 
               dailyStructures: habitData.dailyStructures,
-              reminders: habitData.reminders, // Save reminders
-              stackTrigger: habitData.stackTrigger // Save stack trigger
+              reminders: habitData.reminders
            };
            handleUpdateState({ ...appState, habits: [...appState.habits, newHabit] });
       }
@@ -388,7 +387,6 @@ const App: React.FC = () => {
                         <AddHabitForm 
                             type={selectedHabitType} 
                             initialData={habitToEdit}
-                            existingHabits={appState.habits} // Pass habits for smart stacking
                             onBack={() => { setSelectedHabitType(null); setHabitToEdit(undefined); }} 
                             onSave={handleCreateHabit}
                         />

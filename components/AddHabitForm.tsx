@@ -8,7 +8,6 @@ import { Habit, MicroHabit } from '../types';
 interface Props {
   type: string;
   initialData?: Habit;
-  existingHabits?: Habit[]; // New prop
   onBack: () => void;
   onSave: (habitData: Partial<Habit>) => void;
 }
@@ -45,7 +44,7 @@ const HABIT_UNITS = ['time', 'minute', 'hour'];
 const PERIODS = ['Day', 'Week', 'Month', 'Year'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [], onBack, onSave }) => {
+const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) => {
   // Navigation State
   const [step, setStep] = useState(1);
 
@@ -89,9 +88,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [],
   const [reminderTimes, setReminderTimes] = useState<string[]>([]); // List of added times
   const [description, setDescription] = useState('');
   
-  // Smart Stacking
-  const [stackTrigger, setStackTrigger] = useState('');
-
   // Increment Settings
   const [incrementAmount, setIncrementAmount] = useState<number | string>(1);
   const [isIncrementModalOpen, setIsIncrementModalOpen] = useState(false);
@@ -116,7 +112,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [],
         setDescription(initialData.description || '');
         setCountValue(initialData.goal);
         setIncrementAmount(initialData.increment || 1); 
-        setStackTrigger(initialData.stackTrigger || '');
         
         if (initialData.structure) {
             setStructure(initialData.structure);
@@ -178,15 +173,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [],
   };
 
   const handleFinalSave = () => {
-    // Resolve Smart Stack ID
-    let stackedAfterId = undefined;
-    if (stackTrigger.trim()) {
-        const parentHabit = existingHabits.find(h => h.name.toLowerCase() === stackTrigger.trim().toLowerCase());
-        if (parentHabit) {
-            stackedAfterId = parentHabit.id;
-        }
-    }
-
     // Construct Final Object
     const habitData: Partial<Habit> = {
       id: initialData?.id, 
@@ -201,8 +187,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [],
       description: description || undefined,
       structure: structure.length > 0 ? structure : undefined, 
       reminders: hasReminder ? reminderTimes.map(t => ({ time: t, days: reminderDays })) : [], 
-      stackTrigger: stackTrigger.trim() || undefined, // Save Stack Trigger Name (Legacy/Visual)
-      stackedAfterId: stackedAfterId, // Save Stack ID (Robust)
     };
 
     if (type === 'value') {
@@ -576,30 +560,6 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, existingHabits = [],
 
       {type === 'count' && (
           <>
-            <div className="w-full h-px bg-white/5 my-6" />
-            
-            {/* Smart Stacking */}
-            <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <Link size={14} className="text-zinc-400"/>
-                    <label className="text-[11px] font-black uppercase tracking-widest text-white">Smart Stacking</label>
-                </div>
-                <div className="relative">
-                    <select 
-                        value={stackTrigger} 
-                        onChange={(e) => setStackTrigger(e.target.value)} 
-                        className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-4 text-sm font-bold text-white appearance-none focus:outline-none"
-                    >
-                        <option value="">No Trigger (Standalone)</option>
-                        {existingHabits.map(h => (
-                            <option key={h.id} value={h.name}>{h.name}</option>
-                        ))}
-                    </select>
-                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-                </div>
-                <p className="text-[10px] text-zinc-500 mt-2 ml-2 leading-relaxed">After I [Trigger Habit], I will [This Habit].</p>
-            </div>
-
             <div className="w-full h-px bg-white/5 my-6" />
 
             {/* Micro Habits */}
