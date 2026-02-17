@@ -1051,18 +1051,74 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                          )}
 
                          {activeTab === 'timer' && !isWeight && (
-                             <motion.div key="timer" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-center pb-48 pt-4 px-6 h-full">
-                                <div className="flex bg-zinc-800 p-1 rounded-2xl border border-white/5 mb-6 w-full max-w-[200px]">
-                                    <button onClick={() => setTimerMode('stopwatch')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'stopwatch' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Stopwatch</button>
-                                    <button onClick={() => setTimerMode('countdown')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'countdown' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Timer</button>
+                            <motion.div 
+                                key="timer" 
+                                initial={{ opacity: 0, y: 20 }} 
+                                animate={{ opacity: 1, y: 0 }} 
+                                exit={{ opacity: 0, y: 20 }} 
+                                className="flex-1 w-full flex flex-col items-center justify-center px-6 pb-32"
+                            >
+                                <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8 text-center">
+                                    {habit.name}
+                                </h2>
+
+                                <div className="flex-shrink-0 flex flex-col items-center w-full mb-8">
+                                    <div className="flex bg-zinc-900/80 p-1 rounded-2xl border border-white/5 w-full max-w-[220px] shadow-inner">
+                                        <button 
+                                            onClick={() => setTimerMode('stopwatch')} 
+                                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timerMode === 'stopwatch' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
+                                        >
+                                            Stopwatch
+                                        </button>
+                                        <button 
+                                            onClick={() => setTimerMode('countdown')} 
+                                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timerMode === 'countdown' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
+                                        >
+                                            Timer
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="w-56 h-56 rounded-full border-4 border-zinc-800 flex items-center justify-center mb-6 relative flex-shrink-0 bg-zinc-900">
-                                    <div className="absolute inset-0 rounded-full border-4 border-white/10" />
-                                    {timerRunning && (<motion.div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-b-transparent border-l-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} />)}
-                                    <div className="text-5xl font-black font-mono tracking-tighter tabular-nums text-white">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div>
+
+                                <div className="w-full flex items-center justify-center py-4 mb-8">
+                                    <div className="w-full max-w-[260px] h-32 rounded-[32px] border-[4px] border-zinc-900 flex items-center justify-center relative bg-zinc-900/40 shadow-2xl flex-shrink-0 overflow-hidden">
+                                        <div className="absolute inset-0 rounded-[28px] border border-white/5" />
+                                        
+                                        {timerRunning && (
+                                            <motion.div 
+                                                className="absolute inset-0 bg-emerald-500/10" 
+                                                animate={{ opacity: [0.2, 0.5, 0.2] }} 
+                                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} 
+                                            />
+                                        )}
+                                        
+                                        <div className="text-5xl font-black font-mono tracking-tighter tabular-nums text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] z-10">
+                                            {Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:
+                                            {Math.floor(timerSeconds % 60).toString().padStart(2, '0')}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-6"><button onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 transition-transform border border-white/5"><RotateCcw size={20}/></button><button onClick={() => setTimerRunning(!timerRunning)} className={`w-20 h-20 rounded-[30px] flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-xl active:scale-95 transition-transform`}>{timerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button><button onClick={handleTimerSave} className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow-lg"><Check size={24}/></button></div>
-                             </motion.div>
+
+                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full">
+                                    <button 
+                                        onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} 
+                                        className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 border border-white/5 shadow-lg"
+                                    >
+                                        <RotateCcw size={20}/>
+                                    </button>
+                                    <button 
+                                        onClick={() => setTimerRunning(!timerRunning)} 
+                                        className={`w-20 h-20 rounded-[30px] flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all`}
+                                    >
+                                        {timerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
+                                    </button>
+                                    <button 
+                                        onClick={handleTimerSave} 
+                                        className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center active:scale-95 shadow-xl"
+                                    >
+                                        <Check size={26} strokeWidth={3}/>
+                                    </button>
+                                </div>
+                            </motion.div>
                          )}
                     </AnimatePresence>
                 </div>

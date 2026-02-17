@@ -1,4 +1,3 @@
-
 // Complete implementation of HabitsView with support for Regular, Weight and Quit habits.
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
@@ -323,7 +322,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
 
     const now = new Date();
     const [endH, endM] = (dayEndTime || "00:00").split(':').map(Number);
-    if (now.getHours() < endH || (now.getHours() === endH && now.getMinutes() < endM)) {
+    if (endH > 0 && endH < 12 && (now.getHours() < endH || (now.getHours() === endH && now.getMinutes() < endM))) {
         now.setDate(now.getDate() - 1);
     }
     const adjustedTodayKey = getLocalDateKey(now);
@@ -1051,21 +1050,21 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                          )}
 
                          {activeTab === 'timer' && !isWeight && (
-                             <motion.div key="timer" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-between pb-48 pt-4">
-                                <div className="flex flex-col items-center flex-shrink-0 px-6 w-full">
+                             <motion.div key="timer" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-start pt-24 px-6 h-full">
+                                <div className="flex-shrink-0 flex flex-col items-center w-full mb-10">
                                     <div className="flex bg-zinc-800 p-1 rounded-2xl border border-white/5 w-full max-w-[200px]">
                                         <button onClick={() => setTimerMode('stopwatch')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'stopwatch' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Stopwatch</button>
                                         <button onClick={() => setTimerMode('countdown')} className={`flex-1 py-2 rounded-xl flex items-center justify-center text-[9px] font-black uppercase tracking-widest transition-all ${timerMode === 'countdown' ? 'bg-white text-black shadow-lg' : 'text-zinc-500'}`}>Timer</button>
                                     </div>
                                 </div>
-                                <div className="flex-1 w-full flex items-center justify-center min-h-0 py-4">
+                                <div className="flex-1 w-full flex items-center justify-center min-h-0">
                                     <div className="w-56 h-56 rounded-full border-4 border-zinc-800 flex items-center justify-center relative flex-shrink-0 bg-zinc-900">
                                         <div className="absolute inset-0 rounded-full border-4 border-white/10" />
                                         {timerRunning && (<motion.div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-b-transparent border-l-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} />)}
                                         <div className="text-5xl font-black font-mono tracking-tighter tabular-nums text-white">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-center gap-6 w-full px-6 flex-shrink-0">
+                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full mb-20">
                                     <button onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 transition-transform border border-white/5"><RotateCcw size={20}/></button>
                                     <button onClick={() => setTimerRunning(!timerRunning)} className={`w-20 h-20 rounded-[30px] flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-xl active:scale-95 transition-transform`}>{timerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}</button>
                                     <button onClick={handleTimerSave} className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center active:scale-95 transition-transform shadow-lg"><Check size={24}/></button>
