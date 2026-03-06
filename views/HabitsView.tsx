@@ -249,7 +249,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const config = getHabitConfig(habit);
   
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
-  const isReport = isWeight || habit.id === 'water-habit';
+  const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
   const isFlexible = config.type === 'days_per'; 
   const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
@@ -412,6 +412,16 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   
   const showDetailCount = hasStructure || (!isReport && !isQuit);
 
+  const weightHistory = useMemo(() => {
+      if (!isWeight) return [];
+      return Object.entries(habit.history)
+          .map(([k, v]) => ({ date: k, value: typeof v === 'number' ? v : 0 }))
+          .filter(entry => entry.value > 0)
+          .sort((a, b) => a.date.localeCompare(b.date));
+  }, [habit.history, isWeight]);
+
+  const lastRecordedWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].value : 0;
+
   return (
     <div className="relative w-full mb-3 last:mb-0">
       <div className="absolute inset-0 flex justify-between items-center px-4 rounded-[28px] pointer-events-none">
@@ -482,7 +492,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                     </div>
                 </div>
             </div>
-            {!isReport && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>
+            {!isReport && !isWeight && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>
                 {weekData.map((day, idx) => (
                     <div key={idx} className="flex flex-col items-center gap-1 flex-1">
                         <div className={`w-full aspect-[4/3] max-w-[36px] rounded-[10px] flex items-center justify-center transition-all border ${getDynamicStatusClasses(day.status, day.isToday)} ${day.isToday ? 'ring-1 ring-white' : ''}`} style={{ borderRadius: '10px' }}>
@@ -492,6 +502,18 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                     </div>
                 ))}
             </div>)}
+            {isWeight && (
+                <div className="w-full h-[60px] bg-black/20 rounded-[18px] p-2 relative flex items-center border border-white/5 shadow-inner mt-2">
+                    <div className="flex-1 h-full relative">
+                        <SimpleLineChart data={weightHistory} color={habit.color} unit={habit.unit} />
+                    </div>
+                    {lastRecordedWeight > 0 && (
+                        <div className="ml-3 flex-shrink-0 flex items-center justify-center px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                            <span className={`text-xs font-black ${styles.text}`}>{lastRecordedWeight} <span className="text-[9px] opacity-70">{habit.unit}</span></span>
+                        </div>
+                    )}
+                </div>
+            )}
           </motion.div>
       </motion.div>
     </div>
@@ -774,7 +796,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   const currentWeeklyCompletions = getWeeklyCompletions(habit, currentDate);
   const isWeeklyTargetMet = currentWeeklyCompletions >= weeklyTarget;
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
-  const isReport = isWeight || habit.id === 'water-habit';
+  const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
 
   const [quitDuration, setQuitDuration] = useState<{days: number, hours: number, minutes: number, seconds: number} | null>(null);
@@ -966,7 +988,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                             <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center pt-2 overflow-hidden justify-center">
                                 <div className="flex flex-col items-center flex-shrink-0 px-6 w-full mb-4">
                                     <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-center mb-2 leading-none text-white drop-shadow-md">{habit.name}</h2>
-                                    {!isWeight && (
+                                    {!isWeight && !isQuit && (
                                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-lg ${isWeeklyTargetMet ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/10'}`}>
                                             <span className={`text-[10px] font-bold uppercase tracking-widest ${isWeeklyTargetMet ? 'text-emerald-400' : 'text-zinc-400'}`}>Streak</span>
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${isWeeklyTargetMet ? 'text-white' : 'text-white'}`}>{habit.streak} {isFlexible ? 'Wks' : 'Days'}</span>
@@ -994,32 +1016,40 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                         </div>
                                     </div>
                                 ) : isQuit ? (
-                                    <>
-                                    <div className="flex-1 w-full flex flex-col items-center justify-between min-h-0 py-2 flex-shrink-0">
+                                    <div className="flex-1 w-full flex flex-col justify-around min-h-0 py-2 flex-shrink-0">
                                         {quitDuration ? (
-                                            <div className="flex flex-col items-center justify-center mt-2">
-                                                <div className="text-5xl sm:text-6xl font-black font-mono tracking-tighter text-white drop-shadow-lg flex items-baseline gap-2">
-                                                    <span>{quitDuration.days.toString().padStart(2, '0')}</span>
-                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-zinc-600">:</motion.span>
-                                                    <span>{quitDuration.hours.toString().padStart(2, '0')}</span>
-                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-zinc-600">:</motion.span>
-                                                    <span>{quitDuration.minutes.toString().padStart(2, '0')}</span>
-                                                </div>
-                                                <div className="flex gap-10 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-2">
-                                                    <span>Days</span>
-                                                    <span>Hours</span>
-                                                    <span>Mins</span>
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="flex items-start gap-1 sm:gap-2">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-4xl sm:text-5xl font-black font-mono tracking-tighter text-white drop-shadow-lg">{quitDuration.days.toString().padStart(2, '0')}</span>
+                                                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">Days</span>
+                                                    </div>
+                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-4xl sm:text-5xl font-black font-mono text-zinc-600 mt-[-2px]">:</motion.span>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-4xl sm:text-5xl font-black font-mono tracking-tighter text-white drop-shadow-lg">{quitDuration.hours.toString().padStart(2, '0')}</span>
+                                                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">Hours</span>
+                                                    </div>
+                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-4xl sm:text-5xl font-black font-mono text-zinc-600 mt-[-2px]">:</motion.span>
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-4xl sm:text-5xl font-black font-mono tracking-tighter text-white drop-shadow-lg">{quitDuration.minutes.toString().padStart(2, '0')}</span>
+                                                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">Mins</span>
+                                                    </div>
+                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-4xl sm:text-5xl font-black font-mono text-zinc-600 mt-[-2px]">:</motion.span>
+                                                    <div className="flex flex-col items-center">
+                                                        <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-4xl sm:text-5xl font-black font-mono tracking-tighter text-violet-400 drop-shadow-lg">{quitDuration.seconds.toString().padStart(2, '0')}</motion.span>
+                                                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">Secs</span>
+                                                    </div>
                                                 </div>
                                                 <div className="mt-6 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-400">
                                                     Started: {new Date(habit.description?.replace('Start: ', '') || '').toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest mt-2">Loading timer...</div>
+                                            <div className="flex justify-center text-zinc-500 text-sm font-bold uppercase tracking-widest">Loading timer...</div>
                                         )}
 
                                         {quitMilestone && (
-                                            <div className="w-full max-w-[280px] mt-8 flex flex-col gap-2">
+                                            <div className="w-full max-w-[280px] mx-auto flex flex-col gap-2">
                                                 <div className="flex justify-between items-end">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Next Milestone</span>
@@ -1031,22 +1061,22 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                     <motion.div 
                                                         initial={{ width: 0 }} 
                                                         animate={{ width: `${quitMilestone.percentage}%` }} 
-                                                        className="h-full bg-gradient-to-r from-violet-800/40 via-violet-600 to-violet-400"
+                                                        className="h-full bg-gradient-to-r from-violet-400 via-violet-600 to-violet-900"
                                                     />
                                                 </div>
                                             </div>
                                         )}
+
+                                        <div className="flex items-center justify-center w-full px-6 flex-shrink-0">
+                                            <button 
+                                                onClick={handleRelapse}
+                                                className="w-full max-w-[280px] py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+                                            >
+                                                <TimerReset size={20} strokeWidth={2.5} />
+                                                Ho ceduto (Reset)
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-center w-full px-6 flex-shrink-0 mt-8 mb-4 pb-2">
-                                        <button 
-                                            onClick={handleRelapse}
-                                            className="w-full max-w-[280px] py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
-                                        >
-                                            <TimerReset size={20} strokeWidth={2.5} />
-                                            Ho ceduto (Reset)
-                                        </button>
-                                    </div>
-                                    </>
                                 ) : (
                                     <>
                                     <div className="flex-1 w-full flex items-center justify-center min-h-0 py-2 flex-shrink-0">
