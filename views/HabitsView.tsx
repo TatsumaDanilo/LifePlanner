@@ -887,7 +887,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   return (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-6">
         <motion.div className="absolute inset-0 bg-black/80 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-        <motion.div layoutId={`habit-card-${habit.id}`} initial={{ borderRadius: 28 }} animate={{ borderRadius: 48 }} exit={{ borderRadius: 28 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="w-full max-w-sm h-[85dvh] bg-[#0a0a0a] overflow-hidden relative shadow-2xl border border-white/10 flex flex-col z-10" onClick={(e) => e.stopPropagation()}>
+        <motion.div layoutId={`habit-card-${habit.id}`} initial={{ borderRadius: 28 }} animate={{ borderRadius: 48 }} exit={{ borderRadius: 28 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="w-full max-w-sm h-[82dvh] max-h-[650px] bg-[#0a0a0a] overflow-hidden relative shadow-2xl border border-white/10 flex flex-col z-10" onClick={(e) => e.stopPropagation()}>
              <div className="w-full h-full flex flex-col relative">
                 <div className="absolute top-[-25%] left-[-15%] w-[90%] h-[70%] bg-purple-900/15 blur-[140px] rounded-full pointer-events-none z-0 mix-blend-screen" />
                 <div className="pt-8 px-6 pb-2 flex items-center justify-end z-10 relative">
@@ -897,7 +897,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                 <div className="flex-1 flex flex-col relative overflow-hidden z-10">
                     <AnimatePresence mode="wait">
                          {activeTab === 'check' && (
-                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute inset-0 w-full flex flex-col items-center pt-4 overflow-y-auto no-scrollbar">
+                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center pt-4 overflow-hidden">
                                 <div className="flex flex-col items-center flex-shrink-0 px-6 w-full">
                                     <h2 className="text-4xl font-black uppercase tracking-tighter text-center mb-3 leading-none text-white drop-shadow-md">{habit.name}</h2>
                                     {!isWeight && (
@@ -910,24 +910,26 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 
                                 {hasStructure ? (
                                     <div className="flex-1 w-full flex flex-col min-h-0 py-4 px-6 flex-shrink-0">
-                                        <div className="mb-4 flex items-center justify-between">
+                                        <div className="mb-4 flex items-center justify-between flex-shrink-0">
                                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tasks Today</span>
                                             <span className="text-xs font-black text-white">{Math.round(structPercentage)}% Done</span>
                                         </div>
-                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-6">
+                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-6 flex-shrink-0">
                                             <motion.div 
                                                 initial={{ width: 0 }} 
                                                 animate={{ width: `${structPercentage}%` }} 
                                                 className={`h-full ${structPercentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                                             />
                                         </div>
-                                        <div className="w-full flex flex-col pb-10">
-                                            {renderChecklist(dailyStructure)}
+                                        <div className="flex-1 w-full overflow-y-auto no-scrollbar pb-4">
+                                            <div className="flex flex-col">
+                                                {renderChecklist(dailyStructure)}
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <>
-                                    <div className="flex-1 w-full flex items-center justify-center min-h-[240px] py-4 flex-shrink-0">
+                                    <div className="flex-1 w-full flex items-center justify-center min-h-0 py-4 flex-shrink-0">
                                         <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center">
                                                 {!isReport && (
                                                     <svg className="w-full h-full rotate-[-90deg] drop-shadow-2xl">
@@ -963,20 +965,19 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-center gap-5 w-full px-6 flex-shrink-0 mt-auto pt-4">
+                                    <div className="flex items-center justify-center gap-5 w-full px-6 flex-shrink-0 mt-auto pb-4">
                                             {!isReport && <button onClick={() => updateValue(-1)} className="w-16 h-16 flex-shrink-0 rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
                                             {!isReport && <button onClick={handleSkip} className={`w-16 h-16 flex-shrink-0 rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
                                             {(!isReport || isWeight) && <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-20 h-20 flex-shrink-0 rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>}
                                     </div>
                                     </>
                                 )}
-                                <div className="h-32 w-full flex-shrink-0" />
                             </motion.div>
                          )}
 
                          {activeTab === 'entries' && (
-                             <motion.div key="entries" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full h-full overflow-hidden relative">
-                                <div className="absolute inset-0 overflow-y-auto no-scrollbar px-6 pt-4">
+                             <motion.div key="entries" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col relative overflow-hidden">
+                                <div className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-4">
                                     {isWeight ? (
                                         <>
                                             <div className="flex-shrink-0 flex flex-col items-center mb-6">
@@ -1050,7 +1051,6 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                             </div>
                                         </>
                                     )}
-                                    <div className="h-32 w-full flex-shrink-0" />
                                 </div>
                              </motion.div>
                          )}
@@ -1061,7 +1061,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 initial={{ opacity: 0, y: 20 }} 
                                 animate={{ opacity: 1, y: 0 }} 
                                 exit={{ opacity: 0, y: 20 }} 
-                                className="absolute inset-0 w-full flex flex-col items-center px-6 pt-4 overflow-y-auto no-scrollbar"
+                                className="flex-1 w-full flex flex-col items-center px-6 pt-4 overflow-hidden"
                             >
                                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8 text-center flex-shrink-0">
                                     {habit.name}
@@ -1084,7 +1084,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 </div>
 
-                                <div className="w-full flex items-center justify-center py-4 mb-8">
+                                <div className="flex-1 w-full flex items-center justify-center py-4 min-h-0">
                                     <div className="w-full max-w-[260px] h-32 rounded-[32px] border-[4px] border-zinc-900 flex items-center justify-center relative bg-zinc-900/40 shadow-2xl flex-shrink-0 overflow-hidden">
                                         <div className="absolute inset-0 rounded-[28px] border border-white/5" />
                                         
@@ -1103,7 +1103,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 </div>
 
-                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full mt-auto pt-8">
+                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full mt-auto pb-4">
                                     <button 
                                         onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} 
                                         className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 border border-white/5 shadow-lg"
@@ -1123,13 +1123,12 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                         <Check size={26} strokeWidth={3}/>
                                     </button>
                                 </div>
-                                <div className="h-32 w-full flex-shrink-0" />
                             </motion.div>
                          )}
                     </AnimatePresence>
                 </div>
                 
-                <div className="absolute bottom-6 left-0 right-0 px-6 z-40 flex justify-center">
+                <div className="px-6 pb-6 pt-2 flex-shrink-0 z-40 flex justify-center bg-[#0a0a0a]">
                     <div className="p-2 rounded-[32px] flex w-full max-w-sm bg-zinc-900/80 backdrop-blur-md border border-white/10 shadow-2xl">
                         {[ { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, { id: 'check', label: 'Check', icon: CheckSquare }, !isReport ? { id: 'timer', label: 'Timer', icon: Clock } : null ].filter(Boolean).map((tab: any) => { const isActive = activeTab === tab.id; return ( <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-4 rounded-[24px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-100' : 'text-zinc-500 hover:bg-white/5 scale-95'}`}><tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} /><span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span></button>); })}
                     </div>
