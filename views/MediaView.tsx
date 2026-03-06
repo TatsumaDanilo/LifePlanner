@@ -270,27 +270,29 @@ const MediaView: React.FC<Props> = ({
                )}
             </header>
             
-            <div className="flex-1 px-8 flex flex-col items-center justify-center min-h-0 py-4">
-               <div className="w-48 aspect-[2/3] rounded-[32px] overflow-hidden shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/10 mb-6 bg-zinc-900 flex-shrink-0">
-                  <FadeImage src={selectedItem?.image || ''} className="w-full h-full" alt={selectedItem?.title || ''} />
-               </div>
-               <div className="flex flex-col items-center mb-6 flex-shrink-0">
-                  <h1 className="text-3xl font-black uppercase tracking-tighter text-center leading-tight mb-2 px-2 text-white drop-shadow-lg">{selectedItem?.title}</h1>
-                  <div className="flex items-center gap-2 opacity-50">
-                    <Bookmark size={10} className="text-zinc-400" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">{selectedItem?.seriesTitle || 'Elemento'}</span>
-                  </div>
-               </div>
-               <div className="w-full max-h-[25vh] bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-[36px] p-6 relative overflow-hidden shadow-2xl flex flex-col min-h-[100px]">
-                  <div className="flex-1 overflow-y-auto no-scrollbar">
-                    <p className="text-sm font-medium text-zinc-200 italic leading-relaxed text-center">
-                      {selectedItem?.description ? `"${selectedItem.description}"` : ""}
-                    </p>
-                  </div>
+            <div className="flex-1 px-8 flex flex-col items-center justify-start min-h-0 py-4 overflow-y-auto no-scrollbar">
+               <div className="w-full flex flex-col items-center my-auto">
+                   <div className="w-48 aspect-[2/3] rounded-[32px] overflow-hidden shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] border border-white/10 mb-6 bg-zinc-900 flex-shrink-0">
+                      <FadeImage src={selectedItem?.image || ''} className="w-full h-full" alt={selectedItem?.title || ''} />
+                   </div>
+                   <div className="flex flex-col items-center mb-6 flex-shrink-0">
+                      <h1 className="text-3xl font-black uppercase tracking-tighter text-center leading-tight mb-2 px-2 text-white drop-shadow-lg">{selectedItem?.title}</h1>
+                      <div className="flex items-center gap-2 opacity-50">
+                        <Bookmark size={10} className="text-zinc-400" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">{selectedItem?.seriesTitle || 'Elemento'}</span>
+                      </div>
+                   </div>
+                   {selectedItem?.description && (
+                       <div className="w-full bg-white/[0.05] backdrop-blur-md border border-white/10 rounded-[36px] p-6 relative shadow-2xl flex flex-col flex-shrink-0">
+                          <p className="text-sm font-medium text-zinc-200 italic leading-relaxed text-center">
+                            "{selectedItem.description}"
+                          </p>
+                       </div>
+                   )}
                </div>
             </div>
 
-            <footer className="flex-shrink-0 h-32 flex items-center justify-center gap-8 px-6 pb-10 bg-gradient-to-t from-black/20 to-transparent z-20">
+            <footer className="flex-shrink-0 h-32 flex items-center justify-center gap-8 px-6 pb-10 pt-4 bg-gradient-to-t from-black/60 to-transparent z-20">
                <button onClick={() => setConfirmAction({ type: 'item', id: selectedId, title: selectedItem?.title || '' })} className="w-16 h-16 rounded-[28px] bg-white/10 backdrop-blur-xl border border-white/10 text-zinc-300 flex items-center justify-center active:bg-red-500/20 active:text-red-500 transition-colors">
                   <Trash2 size={24}/>
                </button>
@@ -450,7 +452,7 @@ const MediaView: React.FC<Props> = ({
                initial={{ opacity: 0, scale: 0.95, y: 10 }}
                animate={{ opacity: 1, scale: 1, y: 0 }}
                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-               className="fixed left-6 right-6 bottom-32 bg-[#121212] rounded-[32px] p-6 z-[120] border border-white/10 shadow-2xl"
+               className="fixed left-6 right-6 bottom-32 bg-[#121212] rounded-[32px] p-6 z-[120] border border-white/10 shadow-2xl max-h-[60vh] overflow-y-auto no-scrollbar"
             >
                 <div className="flex flex-col items-center text-center">
                     <h3 className="text-xl font-bold mb-2">Elimina {confirmAction.type === 'collection' ? 'Cartella' : 'Elemento'}?</h3>

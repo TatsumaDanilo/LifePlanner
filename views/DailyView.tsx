@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
-import { Droplets, Sparkles, Plus, Clock, Moon, Bell, Trash2, X, Check, ChevronDown, ChevronUp, Lock, Link, PlayCircle, AlertCircle, ArrowUp } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Droplets, Sparkles, Plus, Minus, Clock, Moon, Bell, Trash2, X, Check, ChevronDown, ChevronUp, Lock, Link, PlayCircle, AlertCircle, ArrowUp } from 'lucide-react';
 import { AppState, DailyBlock, Habit, MediaItem } from '../types';
 import GlassCard from '../components/GlassCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,6 +49,8 @@ const BlockEditorModal = ({
     initialActivity, 
     initialHabitId,
     initialMediaId,
+    initialReminderOffset,
+    initialValue,
     habits,
     mediaItems,
     isExisting,
@@ -59,17 +62,20 @@ const BlockEditorModal = ({
     initialActivity: string, 
     initialHabitId?: string,
     initialMediaId?: string,
+    initialReminderOffset?: number,
+    initialValue?: number,
     habits: Habit[],
     mediaItems: MediaItem[],
     isExisting: boolean,
     onClose: () => void, 
-    onSave: (activity: string, habitId?: string, mediaId?: string, addReminder?: boolean) => void,
+    onSave: (activity: string, habitId?: string, mediaId?: string, reminderOffset?: number, value?: number) => void,
     onDelete: () => void
 }) => {
     const [activity, setActivity] = useState(initialActivity);
     const [selectedHabitId, setSelectedHabitId] = useState<string | undefined>(initialHabitId);
     const [selectedMediaId, setSelectedMediaId] = useState<string | undefined>(initialMediaId);
-    const [addReminder, setAddReminder] = useState(false);
+    const [reminderOffset, setReminderOffset] = useState<number | undefined>(initialReminderOffset);
+    const [blockValue, setBlockValue] = useState<number | ''>(initialValue || '');
 
     // 1. Auto-Naming Logic: Update text when Habit or Media changes
     useEffect(() => {
@@ -86,6 +92,10 @@ const BlockEditorModal = ({
             if (!activity || activity === initialActivity || habits.some(h => h.name === activity)) {
                 newName = habit.name;
             }
+            // Auto-set value if empty
+            if (blockValue === '') {
+                setBlockValue(habit.unit === 'times' ? 1 : habit.goal);
+            }
         } else if (media) {
             if (!activity) newName = media.title;
         }
@@ -93,11 +103,7 @@ const BlockEditorModal = ({
         setActivity(newName);
     }, [selectedHabitId, selectedMediaId, habits, mediaItems]);
 
-    // 2. Validation Logic: Check if reminder exists
-    const selectedHabit = habits.find(h => h.id === selectedHabitId);
-    const hasReminderAtTime = selectedHabit?.reminders?.some(r => r.time === initialTime);
-    const isReminderMissing = selectedHabit && !hasReminderAtTime;
-    const canSave = !!activity.trim() && (!isReminderMissing || addReminder);
+    const canSave = !!activity.trim();
 
     return (
         <motion.div 
@@ -112,10 +118,10 @@ const BlockEditorModal = ({
                 animate={{ scale: 1, y: 0 }} 
                 exit={{ scale: 0.9, y: 20 }} 
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl relative"
+                className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl relative max-h-[90vh] flex flex-col"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-white font-black text-xs">
                             {initialTime}
@@ -127,7 +133,7 @@ const BlockEditorModal = ({
                     </button>
                 </div>
 
-                <div className="space-y-5 mb-8">
+                <div className="space-y-5 mb-8 overflow-y-auto no-scrollbar flex-1">
                     {/* Habit Selection (Dropdown) */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-2 flex items-center gap-2">
@@ -182,35 +188,56 @@ const BlockEditorModal = ({
                         />
                     </div>
 
-                    {/* Reminder Validation Warning */}
+                    {/* Value Input (Only if Habit Linked) */}
                     <AnimatePresence>
-                        {isReminderMissing && (
+                        {selectedHabitId && (
                             <motion.div 
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 className="overflow-hidden"
                             >
-                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-[20px] p-4 flex items-center gap-3">
-                                    <AlertCircle className="text-amber-500 flex-shrink-0" size={20} />
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold text-amber-200 uppercase tracking-wide leading-tight">Promemoria Obbligatorio</p>
-                                        <p className="text-[10px] text-amber-400/80 leading-tight mt-1">Questa abitudine richiede un promemoria per essere salvata.</p>
-                                    </div>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <div className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors ${addReminder ? 'bg-amber-500 border-amber-500' : 'border-amber-500/50'}`}>
-                                            {addReminder && <Check size={14} className="text-black" strokeWidth={3} />}
-                                        </div>
-                                        <input type="checkbox" checked={addReminder} onChange={(e) => setAddReminder(e.target.checked)} className="hidden" />
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-2">
+                                        Valore Completamento ({habits.find(h => h.id === selectedHabitId)?.unit})
                                     </label>
+                                    <input 
+                                        type="number"
+                                        value={blockValue}
+                                        onChange={(e) => setBlockValue(e.target.value === '' ? '' : Number(e.target.value))}
+                                        placeholder="Es. 30"
+                                        className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-colors font-bold"
+                                    />
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Reminder Offset Dropdown */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                            <Bell size={10} className="text-amber-400" /> Promemoria
+                        </label>
+                        <div className="relative">
+                            <select 
+                                value={reminderOffset === undefined ? 'none' : reminderOffset}
+                                onChange={(e) => setReminderOffset(e.target.value === 'none' ? undefined : Number(e.target.value))}
+                                className="w-full h-14 bg-zinc-900 border border-white/10 rounded-[20px] px-5 text-sm text-white focus:outline-none appearance-none font-medium"
+                            >
+                                <option value="none">Nessuno</option>
+                                <option value={0}>All'ora esatta</option>
+                                <option value={5}>5 minuti prima</option>
+                                <option value={10}>10 minuti prima</option>
+                                <option value={15}>15 minuti prima</option>
+                                <option value={30}>30 minuti prima</option>
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-shrink-0 pt-2">
                     {isExisting && (
                         <button 
                             onClick={onDelete}
@@ -221,7 +248,7 @@ const BlockEditorModal = ({
                     )}
                     <button 
                         disabled={!canSave}
-                        onClick={() => onSave(activity, selectedHabitId, selectedMediaId, addReminder)}
+                        onClick={() => onSave(activity, selectedHabitId, selectedMediaId, reminderOffset, blockValue === '' ? undefined : blockValue)}
                         className={`flex-1 h-14 rounded-[20px] font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2 ${canSave ? 'bg-white text-black' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'}`}
                     >
                         {isExisting ? 'Update' : 'Create'} <Check size={16} />
@@ -237,14 +264,26 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
   const [isAgendaExpanded, setIsAgendaExpanded] = useState(false);
   
   // State for Editor
-  const [editorData, setEditorData] = useState<{ time: string, activity: string, habitId?: string, mediaId?: string, isExisting: boolean } | null>(null);
+  const [editorData, setEditorData] = useState<{ time: string, activity: string, habitId?: string, mediaId?: string, reminderOffset?: number, value?: number, isExisting: boolean } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   // Track if this is the first render to handle initial scroll instantly
   const isFirstRender = useRef(true);
 
   const updateWater = (delta: number) => {
-    setState({ ...state, waterIntake: Math.max(0, state.waterIntake + delta) });
+    const newWaterIntake = Math.max(0, state.waterIntake + delta);
+    
+    // Also update the water habit history if it exists
+    const waterHabit = state.habits.find(h => h.id === 'water-habit');
+    let updatedHabits = state.habits;
+    
+    if (waterHabit) {
+      const dateKey = getLocalDateKey(selectedDate);
+      const newHistory = { ...waterHabit.history, [dateKey]: newWaterIntake };
+      updatedHabits = state.habits.map(h => h.id === 'water-habit' ? { ...h, history: newHistory } : h);
+    }
+    
+    setState({ ...state, waterIntake: newWaterIntake, habits: updatedHabits });
   };
 
   const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,6 +336,8 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           activity: existingBlock ? existingBlock.activity : '',
           habitId: existingBlock?.habitId,
           mediaId: existingBlock?.mediaId,
+          reminderOffset: existingBlock?.reminderOffset,
+          value: existingBlock?.value,
           isExisting: !!existingBlock
       });
   };
@@ -317,7 +358,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
       setEditorData(null);
   };
 
-  const handleSaveBlock = (activity: string, habitId?: string, mediaId?: string, addReminder?: boolean) => {
+  const handleSaveBlock = (activity: string, habitId?: string, mediaId?: string, reminderOffset?: number, value?: number) => {
       if (!editorData || !activity.trim()) return;
 
       const normalizedActivity = activity.trim().toLowerCase();
@@ -332,29 +373,17 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
       }
 
       // 2. Creazione blocco
+      const existingBlock = dayBlocks.find(b => b.time === editorData.time);
       const newBlock: DailyBlock = {
           time: editorData.time,
           activity: activity,
           isFixed: false,
           habitId: finalHabitId,
-          mediaId
+          mediaId,
+          reminderOffset,
+          value,
+          completed: existingBlock ? existingBlock.completed : false
       };
-
-      let updatedHabits = [...state.habits];
-
-      // Gestione Reminder
-      if (finalHabitId && addReminder) {
-          updatedHabits = updatedHabits.map(h => {
-              if (h.id === finalHabitId) {
-                  const newReminders = [...(h.reminders || [])];
-                  if (!newReminders.some(r => r.time === editorData.time)) {
-                      newReminders.push({ time: editorData.time, days: [0,1,2,3,4,5,6] });
-                  }
-                  return { ...h, reminders: newReminders };
-              }
-              return h;
-          });
-      }
 
       // 3. Salvataggio immediato
       const otherBlocks = dayBlocks.filter(b => b.time !== editorData.time);
@@ -366,8 +395,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           dailyBlocks: {
               ...state.dailyBlocks,
               [dateKey]: blocksToSave
-          },
-          habits: updatedHabits 
+          }
       };
       
       setState(newState);
@@ -375,22 +403,36 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
   };
 
   const handleToggleComplete = (time: string, habitId?: string, mediaId?: string) => {
-      if (!habitId) return; // Only habits can be toggled for now in this view
-      const habit = state.habits.find(h => h.id === habitId);
-      if (!habit) return;
-
       const dateKey = getLocalDateKey(selectedDate);
+      const dayBlocks = state.dailyBlocks[dateKey] || [];
+      const blockIndex = dayBlocks.findIndex(b => b.time === time);
+      if (blockIndex === -1) return;
+
+      const block = dayBlocks[blockIndex];
+      const isCompleting = !block.completed;
+      const blockValue = block.value || 1;
+
+      // Update block
+      const newBlocks = [...dayBlocks];
+      newBlocks[blockIndex] = { ...block, completed: isCompleting };
+
+      let updatedHabits = [...state.habits];
+      let updatedMedia = [...state.media];
 
       // Update Habit History
-      const currentVal = (typeof habit.history[dateKey] === 'number') ? habit.history[dateKey] as number : 0;
-      const isCompleting = currentVal < habit.goal;
-      const newVal = isCompleting ? habit.goal : 0; // Simple toggle for daily view
-      
-      const newHistory = { ...habit.history, [dateKey]: newVal };
-      let updatedHabits = state.habits.map(h => h.id === habitId ? { ...h, history: newHistory } : h);
+      if (habitId) {
+          const habit = updatedHabits.find(h => h.id === habitId);
+          if (habit) {
+              const currentVal = (typeof habit.history[dateKey] === 'number') ? habit.history[dateKey] as number : 0;
+              let newVal = isCompleting ? currentVal + blockValue : currentVal - blockValue;
+              newVal = Math.max(0, newVal); // Prevent negative
+              
+              const newHistory = { ...habit.history, [dateKey]: newVal };
+              updatedHabits = updatedHabits.map(h => h.id === habitId ? { ...h, history: newHistory } : h);
+          }
+      }
 
       // Media Completion Check
-      let updatedMedia = [...state.media];
       if (isCompleting && mediaId) {
           const media = updatedMedia.find(m => m.id === mediaId);
           if (media && media.status !== 'completed') {
@@ -400,7 +442,12 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
           }
       }
 
-      setState({ ...state, habits: updatedHabits, media: updatedMedia });
+      setState({ 
+          ...state, 
+          dailyBlocks: { ...state.dailyBlocks, [dateKey]: newBlocks },
+          habits: updatedHabits, 
+          media: updatedMedia 
+      });
   };
 
   const days = useMemo(() => {
@@ -449,22 +496,6 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
             <h1 className="text-4xl font-black tracking-tighter">Daily Plan</h1>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">Deep Work & Flow</p>
         </div>
-        
-        <div className="flex flex-col items-end">
-            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-1">Fine Giornata</span>
-            <div className="relative flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-full pl-3 pr-4 py-2 shadow-sm cursor-pointer active:scale-95 transition-transform">
-                <Moon size={14} className="text-indigo-400" />
-                <span className="text-xs font-bold text-white tracking-wider tabular-nums">
-                    {state.dayEndTime || "00:00"}
-                </span>
-                <input 
-                    type="time" 
-                    value={state.dayEndTime || "00:00"} 
-                    onChange={handleEndTimeChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 appearance-none bg-transparent" 
-                />
-            </div>
-        </div>
       </header>
 
       <div className="space-y-6 px-6">
@@ -488,9 +519,10 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
               Agenda Oraria
             </h3>
             <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1 rounded-full border border-white/5">
+                <button onClick={() => updateWater(-1)} className="p-1 text-zinc-500 hover:text-white transition-colors"><Minus size={10}/></button>
                 <Droplets size={12} className="text-blue-400" />
                 <span className="text-[10px] font-black text-white">{state.waterIntake} bicchieri</span>
-                <button onClick={() => updateWater(1)} className="p-1"><Plus size={10}/></button>
+                <button onClick={() => updateWater(1)} className="p-1 text-zinc-500 hover:text-white transition-colors"><Plus size={10}/></button>
             </div>
           </div>
           
@@ -513,11 +545,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                         const isCurrentSlot = time === currentTimeSlot;
 
                         // Completion Status
-                        let isCompleted = false;
-                        if (linkedHabit) {
-                            const entry = linkedHabit.history[dateKey];
-                            isCompleted = typeof entry === 'number' ? entry >= linkedHabit.goal : (entry && entry.completedIds?.length > 0);
-                        }
+                        const isCompleted = block ? !!block.completed : false;
 
                         return (
                             <div 
@@ -555,14 +583,12 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
                                         </div>
                                         
                                         <div className="flex items-center gap-3">
-                                            {linkedHabit && (
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleToggleComplete(time, linkedHabit.id, linkedMedia?.id); }}
-                                                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${isCompleted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/10 text-white/20 hover:bg-white/20'}`}
-                                                >
-                                                    <Check size={12} strokeWidth={isCompleted ? 4 : 2} />
-                                                </button>
-                                            )}
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleToggleComplete(time, linkedHabit?.id, linkedMedia?.id); }}
+                                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${isCompleted ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white/10 text-white/20 hover:bg-white/20'}`}
+                                            >
+                                                <Check size={12} strokeWidth={isCompleted ? 4 : 2} />
+                                            </button>
                                             <div className="flex items-center gap-2">
                                                 {linkedHabit && !isCompleted && <div className={`w-1.5 h-1.5 rounded-full ${getDotColor(linkedHabit.color)}`} />}
                                                 {block.isFixed && <div className="w-1.5 h-1.5 rounded-full bg-zinc-500" />}
@@ -620,22 +646,27 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
         ))}
       </div>
 
-      <AnimatePresence>
-          {editorData && (
-              <BlockEditorModal 
-                  initialTime={editorData.time}
-                  initialActivity={editorData.activity}
-                  initialHabitId={editorData.habitId}
-                  initialMediaId={editorData.mediaId}
-                  habits={state.habits}
-                  mediaItems={state.media}
-                  isExisting={editorData.isExisting}
-                  onClose={() => setEditorData(null)}
-                  onSave={handleSaveBlock}
-                  onDelete={handleDeleteBlock}
-              />
-          )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+            {editorData && (
+                <BlockEditorModal 
+                    initialTime={editorData.time}
+                    initialActivity={editorData.activity}
+                    initialHabitId={editorData.habitId}
+                    initialMediaId={editorData.mediaId}
+                    initialReminderOffset={editorData.reminderOffset}
+                    initialValue={editorData.value}
+                    habits={state.habits}
+                    mediaItems={state.media}
+                    isExisting={editorData.isExisting}
+                    onClose={() => setEditorData(null)}
+                    onSave={handleSaveBlock}
+                    onDelete={handleDeleteBlock}
+                />
+            )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

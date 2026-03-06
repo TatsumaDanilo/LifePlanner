@@ -249,6 +249,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const config = getHabitConfig(habit);
   
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
+  const isReport = isWeight || habit.id === 'water-habit';
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
   const isFlexible = config.type === 'days_per'; 
   const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
@@ -409,7 +410,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (progressPercent / 100) * circumference;
   
-  const showDetailCount = hasStructure || (!isWeight && !isQuit);
+  const showDetailCount = hasStructure || (!isReport && !isQuit);
 
   return (
     <div className="relative w-full mb-3 last:mb-0">
@@ -419,7 +420,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
             <button onClick={(e) => { e.stopPropagation(); onEditRequest(); animate(x, 0); }} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 active:scale-90 transition-transform"><Edit3 size={18} /></button>
          </div>
          <div className="flex items-center gap-3 w-[110px] justify-end pointer-events-auto">
-            {!isWeight && !isQuit && (
+            {!isReport && !isQuit && (
                 <>
                 <button onClick={(e) => handleAction(e, onTimer)} className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 active:scale-90 transition-transform"><TimerIcon size={18} /></button>
                 <button onClick={(e) => handleAction(e, onSkip)} className="w-10 h-10 rounded-full bg-zinc-700/50 text-zinc-400 flex items-center justify-center border border-white/10 active:scale-90 transition-transform"><ChevronsRight size={18} /></button>
@@ -431,7 +432,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
       <motion.div
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: (isWeight || isQuit) ? 0 : -120, right: 120 }}
+        dragConstraints={{ left: (isReport || isQuit) ? 0 : -120, right: 120 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
         className="relative z-20 touch-pan-y transform-gpu"
@@ -446,9 +447,9 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
                     <h3 className="text-sm font-black uppercase tracking-tight text-white leading-tight">{habit.name}</h3>
-                    {isWeight && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Scale size={10} className="text-zinc-400" /></div>)}
+                    {isReport && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5">{isWeight ? <Scale size={10} className="text-zinc-400" /> : <BarChart2 size={10} className="text-zinc-400" />}</div>)}
                     {isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20"><Ban size={10} className="text-red-400" /></div>)}
-                    {!isWeight && !isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${habit.streak > 0 ? styles.text : 'text-zinc-600'}`} fill={habit.streak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${habit.streak > 0 ? 'text-white' : 'text-zinc-600'}`}>{habit.streak}</span></div>)}
+                    {!isReport && !isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${habit.streak > 0 ? styles.text : 'text-zinc-600'}`} fill={habit.streak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${habit.streak > 0 ? 'text-white' : 'text-zinc-600'}`}>{habit.streak}</span></div>)}
                 </div>
                 <div className="flex items-center gap-2">
                     {showDetailCount && (<div className="px-2 py-1 text-right"><span className="text-[10px] font-black text-white">{displayValue}</span><span className="text-[9px] font-bold text-zinc-500"> / {dailyGoal} {hasStructure ? 'micro' : (habit.unit === 'minutes' ? 'min' : (habit.unit === 'times' ? '' : habit.unit))}</span></div>)}
@@ -463,10 +464,10 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                     )}
 
                     <div className="flex items-center gap-2">
-                        {isFlexible && !isWeight && !isQuit && (<div className="flex flex-col gap-[3px]">{Array.from({length: weeklyTarget}).map((_, idx) => { const reverseIdx = weeklyTarget - 1 - idx; const isFilled = reverseIdx < currentWeeklyCompletions; return (<div key={idx} className={`w-1 h-1 rounded-full transition-colors ${isFilled ? styles.bg.replace('/10', '') : 'bg-zinc-800'}`} />); })}</div>)}
+                        {isFlexible && !isReport && !isQuit && (<div className="flex flex-col gap-[3px]">{Array.from({length: weeklyTarget}).map((_, idx) => { const reverseIdx = weeklyTarget - 1 - idx; const isFilled = reverseIdx < currentWeeklyCompletions; return (<div key={idx} className={`w-1 h-1 rounded-full transition-colors ${isFilled ? styles.bg.replace('/10', '') : 'bg-zinc-800'}`} />); })}</div>)}
                         
                         <button onClick={(e) => { e.stopPropagation(); hasStructure ? onClick() : onQuickAdd(e); }} className="relative w-10 h-10 flex items-center justify-center active:scale-90 transition-transform">
-                            {!isWeight && !isQuit && (<svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full -rotate-90"><circle cx="20" cy="20" r={radius} fill="transparent" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4 2" className="text-zinc-800" /><circle cx="20" cy="20" r={radius} fill="transparent" stroke={baseHex} strokeWidth="2.5" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-500 ease-out drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" /></svg>)}
+                            {!isReport && !isQuit && (<svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full -rotate-90"><circle cx="20" cy="20" r={radius} fill="transparent" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4 2" className="text-zinc-800" /><circle cx="20" cy="20" r={radius} fill="transparent" stroke={baseHex} strokeWidth="2.5" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-500 ease-out drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" /></svg>)}
                             
                             {isQuit ? (
                                 <div className="w-10 h-10 rounded-[12px] bg-zinc-800 border border-white/10 text-red-400 flex items-center justify-center shadow-lg active:bg-red-500 active:text-white transition-colors">
@@ -481,7 +482,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                     </div>
                 </div>
             </div>
-            {!isWeight && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>
+            {!isReport && (<div className="w-full bg-zinc-900/60 rounded-[18px] p-1.5 flex justify-between items-center border border-white/5 shadow-inner" style={{ borderRadius: '18px' }}>
                 {weekData.map((day, idx) => (
                     <div key={idx} className="flex flex-col items-center gap-1 flex-1">
                         <div className={`w-full aspect-[4/3] max-w-[36px] rounded-[10px] flex items-center justify-center transition-all border ${getDynamicStatusClasses(day.status, day.isToday)} ${day.isToday ? 'ring-1 ring-white' : ''}`} style={{ borderRadius: '10px' }}>
@@ -627,7 +628,7 @@ const HabitsReportOverlay: React.FC<HabitReportOverlayProps> = ({ habits, onClos
                 </div>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar px-6 relative z-0">
-                <div className="min-h-full flex flex-col justify-end pb-32">
+                <div className="min-h-full flex flex-col justify-end">
                     <div className="grid grid-cols-1 gap-4">
                         {habits.map(habit => { 
                             const completion = calculateCompletion(habit); 
@@ -704,6 +705,7 @@ const HabitsReportOverlay: React.FC<HabitReportOverlayProps> = ({ habits, onClos
                             ); 
                         })}
                     </div>
+                    <div className="h-32 w-full flex-shrink-0" />
                 </div>
             </div>
         </motion.div>
@@ -725,17 +727,17 @@ const QuickTimerModal: React.FC<QuickTimerModalProps> = ({ habit, onClose, onSav
     
     const handleSave = () => { let secondsToLog = 0; if (timerMode === 'stopwatch') { secondsToLog = timerSeconds; } else { secondsToLog = initialCountdown - timerSeconds; } if (secondsToLog > 0) { const valToAdd = habit.unit === 'minutes' ? Math.ceil(secondsToLog / 60) : 1; onSave(valToAdd); } onClose(); };
     
-    return (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6" onClick={onClose}><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[36px] p-6 shadow-2xl overflow-hidden relative"><div className="flex justify-between items-center mb-6"><div className="flex items-center gap-3"><div className={`p-2 rounded-full bg-zinc-900 border ${styles.border} ${styles.text}`}>{habit.timeOfDay === 'morning' ? <Sun size={18} /> : habit.timeOfDay === 'evening' ? <Moon size={18} /> : <Zap size={18} />}</div><span className="text-lg font-black uppercase tracking-tighter text-white">{habit.name}</span></div><button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 active:bg-white/10"><X size={18} /></button></div><div className="flex flex-col items-center justify-center w-full min-h-0 mb-6"><div className="text-4xl font-black font-mono tracking-tighter tabular-nums text-white w-32 text-center mb-4">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div><button onClick={() => setTimerRunning(!timerRunning)} className={`h-14 w-28 rounded-full flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 transition-transform`}>{timerRunning ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}</button></div><div className="flex gap-3"><button onClick={onClose} className="flex-1 h-12 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={handleSave} className="flex-1 h-12 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save</button></div></motion.div></motion.div>);
+    return (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6" onClick={onClose}><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[36px] p-6 shadow-2xl overflow-y-auto max-h-[90vh] relative no-scrollbar"><div className="flex justify-between items-center mb-6"><div className="flex items-center gap-3"><div className={`p-2 rounded-full bg-zinc-900 border ${styles.border} ${styles.text}`}>{habit.timeOfDay === 'morning' ? <Sun size={18} /> : habit.timeOfDay === 'evening' ? <Moon size={18} /> : <Zap size={18} />}</div><span className="text-lg font-black uppercase tracking-tighter text-white">{habit.name}</span></div><button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 active:bg-white/10"><X size={18} /></button></div><div className="flex flex-col items-center justify-center w-full min-h-0 mb-6"><div className="text-4xl font-black font-mono tracking-tighter tabular-nums text-white w-32 text-center mb-4">{Math.floor(timerSeconds / 60).toString().padStart(2, '0')}:{Math.floor(timerSeconds % 60).toString().padStart(2, '0')}</div><button onClick={() => setTimerRunning(!timerRunning)} className={`h-14 w-28 rounded-full flex items-center justify-center ${timerRunning ? 'bg-orange-500' : 'bg-emerald-500'} text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 transition-transform`}>{timerRunning ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}</button></div><div className="flex gap-3"><button onClick={onClose} className="flex-1 h-12 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={handleSave} className="flex-1 h-12 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save</button></div></motion.div></motion.div>);
 };
 
 const WeightLogModal: React.FC<{ habit: Habit, onClose: () => void, onSave: (val: number) => void, currentDate: Date }> = ({ habit, onClose, onSave, currentDate }) => {
     const styles = getColorClasses(habit.color); const dateKey = getLocalDateKey(currentDate); const val = habit.history[dateKey]; const [weight, setWeight] = useState(val && typeof val === 'number' ? String(val) : '');
-    return (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[130] bg-black/80 backdrop-blur-md flex items-center justify-center p-6" onClick={onClose}><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[36px] p-6 shadow-2xl overflow-hidden relative"><div className="flex justify-between items-center mb-6"><div className="flex items-center gap-3"><div className={`p-2 rounded-full bg-zinc-900 border ${styles.border} ${styles.text}`}><Scale size={18} /></div><span className="text-lg font-black uppercase tracking-tighter text-white">{habit.name}</span></div><button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 active:bg-white/10"><X size={18} /></button></div><div className="flex flex-col items-center justify-center w-full min-h-0 mb-8 pt-4"><div className="flex items-baseline gap-2"><input type="number" step="0.1" autoFocus value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="0.0" className="bg-transparent text-right text-6xl font-black text-white focus:outline-none w-40 placeholder:text-zinc-800" /><span className="text-xl font-bold text-zinc-500 uppercase">{habit.unit}</span></div><p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Log Weight for {currentDate.toLocaleDateString()}</p></div><div className="flex gap-3"><button onClick={onClose} className="flex-1 h-12 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={() => { const v = parseFloat(weight); if (!isNaN(v)) onSave(v); }} className="flex-1 h-12 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save</button></div></motion.div></motion.div>);
+    return (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[130] bg-black/80 backdrop-blur-md flex items-center justify-center p-6" onClick={onClose}><motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[36px] p-6 shadow-2xl overflow-y-auto max-h-[90vh] relative no-scrollbar"><div className="flex justify-between items-center mb-6"><div className="flex items-center gap-3"><div className={`p-2 rounded-full bg-zinc-900 border ${styles.border} ${styles.text}`}><Scale size={18} /></div><span className="text-lg font-black uppercase tracking-tighter text-white">{habit.name}</span></div><button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-zinc-400 active:bg-white/10"><X size={18} /></button></div><div className="flex flex-col items-center justify-center w-full min-h-0 mb-8 pt-4"><div className="flex items-baseline gap-2"><input type="number" step="0.1" autoFocus value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="0.0" className="bg-transparent text-right text-6xl font-black text-white focus:outline-none w-40 placeholder:text-zinc-800" /><span className="text-xl font-bold text-zinc-500 uppercase">{habit.unit}</span></div><p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mt-2">Log Weight for {currentDate.toLocaleDateString()}</p></div><div className="flex gap-3"><button onClick={onClose} className="flex-1 h-12 rounded-[20px] bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-400">Cancel</button><button onClick={() => { const v = parseFloat(weight); if (!isNaN(v)) onSave(v); }} className="flex-1 h-12 rounded-[20px] bg-white text-black text-[10px] font-black uppercase tracking-widest shadow-lg">Save</button></div></motion.div></motion.div>);
 };
 
-const SkipConfirmModal = ({ habit, onConfirm, onCancel }: { habit: Habit, onConfirm: () => void, onCancel: () => void }) => (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={onCancel}><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#121212] rounded-[32px] p-6 w-full max-w-xs border border-white/10 shadow-2xl text-center"><div className="w-16 h-16 rounded-full bg-zinc-800 mx-auto flex items-center justify-center mb-4 text-orange-400 border border-white/5"><AlertCircle size={32} /></div><h3 className="text-xl font-bold mb-2 text-white">Salta Abitudine</h3><p className="text-zinc-500 text-xs mb-6 px-2 leading-relaxed">Vuoi davvero saltare <span className="text-white font-bold">"{habit.name}"</span> per oggi?</p><div className="flex w-full gap-3"><button onClick={onCancel} className="flex-1 py-4 rounded-[20px] bg-white/5 font-bold text-zinc-400 active:bg-white/10 text-xs uppercase tracking-widest">No</button><button onClick={onConfirm} className="flex-1 py-4 rounded-[20px] bg-orange-500 font-bold text-white shadow-lg active:scale-95 transition-transform text-xs uppercase tracking-widest">Salta</button></div></motion.div></motion.div>);
+const SkipConfirmModal = ({ habit, onConfirm, onCancel }: { habit: Habit, onConfirm: () => void, onCancel: () => void }) => (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={onCancel}><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#121212] rounded-[32px] p-6 w-full max-w-xs border border-white/10 shadow-2xl text-center max-h-[90vh] overflow-y-auto no-scrollbar"><div className="w-16 h-16 rounded-full bg-zinc-800 mx-auto flex items-center justify-center mb-4 text-orange-400 border border-white/5"><AlertCircle size={32} /></div><h3 className="text-xl font-bold mb-2 text-white">Salta Abitudine</h3><p className="text-zinc-500 text-xs mb-6 px-2 leading-relaxed">Vuoi davvero saltare <span className="text-white font-bold">"{habit.name}"</span> per oggi?</p><div className="flex w-full gap-3"><button onClick={onCancel} className="flex-1 py-4 rounded-[20px] bg-white/5 font-bold text-zinc-400 active:bg-white/10 text-xs uppercase tracking-widest">No</button><button onClick={onConfirm} className="flex-1 py-4 rounded-[20px] bg-orange-500 font-bold text-white shadow-lg active:scale-95 transition-transform text-xs uppercase tracking-widest">Salta</button></div></motion.div></motion.div>);
 
-const DeleteConfirmModal = ({ habit, onConfirm, onCancel }: { habit: Habit, onConfirm: () => void, onCancel: () => void }) => (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={onCancel}><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#121212] rounded-[32px] p-6 w-full max-w-xs border border-white/10 shadow-2xl text-center"><div className="w-16 h-16 rounded-full bg-zinc-800 mx-auto flex items-center justify-center mb-4 text-red-500 border border-white/5"><Trash2 size={32} /></div><h3 className="text-xl font-bold mb-2 text-white">Elimina Abitudine</h3><p className="text-zinc-500 text-xs mb-6 px-2 leading-relaxed">Vuoi davvero eliminare <span className="text-white font-bold">"{habit.name}"</span>? Questa azione è irreversibile.</p><div className="flex w-full gap-3"><button onClick={onCancel} className="flex-1 py-4 rounded-[20px] bg-white/5 font-bold text-zinc-400 active:bg-white/10 text-xs uppercase tracking-widest">Annulla</button><button onClick={onConfirm} className="flex-1 py-4 rounded-[20px] bg-red-600 font-bold text-white shadow-lg active:scale-95 transition-transform text-xs uppercase tracking-widest">Elimina</button></div></motion.div></motion.div>);
+const DeleteConfirmModal = ({ habit, onConfirm, onCancel }: { habit: Habit, onConfirm: () => void, onCancel: () => void }) => (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={onCancel}><motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#121212] rounded-[32px] p-6 w-full max-w-xs border border-white/10 shadow-2xl text-center max-h-[90vh] overflow-y-auto no-scrollbar"><div className="w-16 h-16 rounded-full bg-zinc-800 mx-auto flex items-center justify-center mb-4 text-red-500 border border-white/5"><Trash2 size={32} /></div><h3 className="text-xl font-bold mb-2 text-white">Elimina Abitudine</h3><p className="text-zinc-500 text-xs mb-6 px-2 leading-relaxed">Vuoi davvero eliminare <span className="text-white font-bold">"{habit.name}"</span>? Questa azione è irreversibile.</p><div className="flex w-full gap-3"><button onClick={onCancel} className="flex-1 py-4 rounded-[20px] bg-white/5 font-bold text-zinc-400 active:bg-white/10 text-xs uppercase tracking-widest">Annulla</button><button onClick={onConfirm} className="flex-1 py-4 rounded-[20px] bg-red-600 font-bold text-white shadow-lg active:scale-95 transition-transform text-xs uppercase tracking-widest">Elimina</button></div></motion.div></motion.div>);
 
 // DETAIL OVERLAY
 interface HabitDetailOverlayProps {
@@ -772,6 +774,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   const currentWeeklyCompletions = getWeeklyCompletions(habit, currentDate);
   const isWeeklyTargetMet = currentWeeklyCompletions >= weeklyTarget;
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
+  const isReport = isWeight || habit.id === 'water-habit';
 
   const historyEntries = useMemo(() => {
     return Object.entries(habit.history)
@@ -894,7 +897,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                 <div className="flex-1 flex flex-col relative overflow-hidden z-10">
                     <AnimatePresence mode="wait">
                          {activeTab === 'check' && (
-                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center justify-between pb-48 pt-4">
+                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute inset-0 w-full flex flex-col items-center pt-4 overflow-y-auto no-scrollbar">
                                 <div className="flex flex-col items-center flex-shrink-0 px-6 w-full">
                                     <h2 className="text-4xl font-black uppercase tracking-tighter text-center mb-3 leading-none text-white drop-shadow-md">{habit.name}</h2>
                                     {!isWeight && (
@@ -906,7 +909,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 </div>
                                 
                                 {hasStructure ? (
-                                    <div className="flex-1 w-full flex flex-col min-h-0 py-4 px-6 overflow-hidden">
+                                    <div className="flex-1 w-full flex flex-col min-h-0 py-4 px-6 flex-shrink-0">
                                         <div className="mb-4 flex items-center justify-between">
                                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tasks Today</span>
                                             <span className="text-xs font-black text-white">{Math.round(structPercentage)}% Done</span>
@@ -918,15 +921,15 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 className={`h-full ${structPercentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                                             />
                                         </div>
-                                        <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+                                        <div className="w-full flex flex-col pb-10">
                                             {renderChecklist(dailyStructure)}
                                         </div>
                                     </div>
                                 ) : (
                                     <>
-                                    <div className="flex-1 w-full flex items-center justify-center min-h-0 py-4">
+                                    <div className="flex-1 w-full flex items-center justify-center min-h-[240px] py-4 flex-shrink-0">
                                         <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center">
-                                                {!isWeight && (
+                                                {!isReport && (
                                                     <svg className="w-full h-full rotate-[-90deg] drop-shadow-2xl">
                                                         <circle cx="50%" cy="50%" r="45%" className="stroke-zinc-900" strokeWidth="20" fill="none" />
                                                         <motion.circle 
@@ -944,13 +947,13 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                                     <motion.div key={currentValue} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
                                                         <div className="flex items-baseline justify-center gap-2">
-                                                            <span className="text-6xl font-black tracking-tighter text-white">{isWeight ? lastRecordedWeight : (currentValue === -1 ? '-' : currentValue)}</span>
+                                                            <span className="text-6xl font-black tracking-tighter text-white">{isReport ? lastRecordedWeight : (currentValue === -1 ? '-' : currentValue)}</span>
                                                             <span className="text-3xl font-black text-blue-400 uppercase transform translate-y-[-4px]">{habit.unit}</span>
                                                         </div>
                                                         <div className="flex flex-col items-center mt-2">
-                                                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{isWeight ? 'Current' : 'Goal'}</span>
+                                                            <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{isReport ? 'Current' : 'Goal'}</span>
                                                             <span className="text-sm font-black text-zinc-300">
-                                                                {isWeight 
+                                                                {isReport 
                                                                     ? (habit.goal > 0 && <span className="opacity-60">{habit.goal} {habit.unit}</span>) 
                                                                     : <>{habit.goal} <span className="text-[9px] opacity-60">{habit.unit}</span></>
                                                                 }
@@ -960,19 +963,20 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-center gap-5 w-full px-6 flex-shrink-0">
-                                            {!isWeight && <button onClick={() => updateValue(-1)} className="w-16 h-16 flex-shrink-0 rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
-                                            {!isWeight && <button onClick={handleSkip} className={`w-16 h-16 flex-shrink-0 rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
-                                            <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-20 h-20 flex-shrink-0 rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>
+                                    <div className="flex items-center justify-center gap-5 w-full px-6 flex-shrink-0 mt-auto pt-4">
+                                            {!isReport && <button onClick={() => updateValue(-1)} className="w-16 h-16 flex-shrink-0 rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
+                                            {!isReport && <button onClick={handleSkip} className={`w-16 h-16 flex-shrink-0 rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
+                                            {(!isReport || isWeight) && <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-20 h-20 flex-shrink-0 rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>}
                                     </div>
                                     </>
                                 )}
+                                <div className="h-32 w-full flex-shrink-0" />
                             </motion.div>
                          )}
 
                          {activeTab === 'entries' && (
                              <motion.div key="entries" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full h-full overflow-hidden relative">
-                                <div className="absolute inset-0 overflow-y-auto no-scrollbar px-6 pt-4 pb-48">
+                                <div className="absolute inset-0 overflow-y-auto no-scrollbar px-6 pt-4">
                                     {isWeight ? (
                                         <>
                                             <div className="flex-shrink-0 flex flex-col items-center mb-6">
@@ -1046,19 +1050,20 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                             </div>
                                         </>
                                     )}
+                                    <div className="h-32 w-full flex-shrink-0" />
                                 </div>
                              </motion.div>
                          )}
 
-                         {activeTab === 'timer' && !isWeight && (
+                         {activeTab === 'timer' && !isReport && (
                             <motion.div 
                                 key="timer" 
                                 initial={{ opacity: 0, y: 20 }} 
                                 animate={{ opacity: 1, y: 0 }} 
                                 exit={{ opacity: 0, y: 20 }} 
-                                className="flex-1 w-full flex flex-col items-center justify-center px-6 pb-32"
+                                className="absolute inset-0 w-full flex flex-col items-center px-6 pt-4 overflow-y-auto no-scrollbar"
                             >
-                                <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8 text-center">
+                                <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8 text-center flex-shrink-0">
                                     {habit.name}
                                 </h2>
 
@@ -1098,7 +1103,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 </div>
 
-                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full">
+                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full mt-auto pt-8">
                                     <button 
                                         onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} 
                                         className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 border border-white/5 shadow-lg"
@@ -1118,6 +1123,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                         <Check size={26} strokeWidth={3}/>
                                     </button>
                                 </div>
+                                <div className="h-32 w-full flex-shrink-0" />
                             </motion.div>
                          )}
                     </AnimatePresence>
@@ -1125,7 +1131,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                 
                 <div className="absolute bottom-6 left-0 right-0 px-6 z-40 flex justify-center">
                     <div className="p-2 rounded-[32px] flex w-full max-w-sm bg-zinc-900/80 backdrop-blur-md border border-white/10 shadow-2xl">
-                        {[ { id: 'entries', label: isWeight ? 'Report' : 'Calendar', icon: isWeight ? TrendingUp : Calendar }, { id: 'check', label: 'Check', icon: CheckSquare }, !isWeight ? { id: 'timer', label: 'Timer', icon: Clock } : null ].filter(Boolean).map((tab: any) => { const isActive = activeTab === tab.id; return ( <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-4 rounded-[24px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-100' : 'text-zinc-500 hover:bg-white/5 scale-95'}`}><tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} /><span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span></button>); })}
+                        {[ { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, { id: 'check', label: 'Check', icon: CheckSquare }, !isReport ? { id: 'timer', label: 'Timer', icon: Clock } : null ].filter(Boolean).map((tab: any) => { const isActive = activeTab === tab.id; return ( <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-4 rounded-[24px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-100' : 'text-zinc-500 hover:bg-white/5 scale-95'}`}><tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} /><span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span></button>); })}
                     </div>
                 </div>
              </div>

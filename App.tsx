@@ -42,7 +42,17 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('thumb_planner_state');
     if (saved) {
       try {
-        setAppState(JSON.parse(saved));
+        const parsedState = JSON.parse(saved);
+        
+        // Ensure water habit exists for users with existing local storage
+        if (parsedState.habits && !parsedState.habits.some((h: Habit) => h.id === 'water-habit')) {
+          const waterHabit = initialData.habits.find(h => h.id === 'water-habit');
+          if (waterHabit) {
+            parsedState.habits.push(waterHabit);
+          }
+        }
+        
+        setAppState(parsedState);
       } catch (e) {
         console.error("Failed to parse saved state", e);
       }
@@ -65,8 +75,51 @@ const App: React.FC = () => {
       // WEEKDAYS are ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] so 0=Mon
       // JS getDay() is 0=Sun, 1=Mon. So:
       const currentDay = (now.getDay() + 6) % 7; 
+      const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+      // Daily Reminder
+      if (appState.dailyReminderEnabled && appState.dailyReminderTime === currentTime) {
+        const lastSentKey = `notif_daily_${currentTime}_${now.toDateString()}`;
+        if (!sessionStorage.getItem(lastSentKey)) {
+          new Notification("Daily Plan", {
+            body: `È ora di pianificare la tua giornata!`,
+            icon: "/favicon.ico",
+            silent: false
+          });
+          sessionStorage.setItem(lastSentKey, "true");
+        }
+      }
+
+      const todayBlocks = appState.dailyBlocks[todayKey] || [];
+      const habitsInDailyPlan = new Set(todayBlocks.map(b => b.habitId).filter(Boolean));
+
+      // 1. Check Daily Blocks
+      todayBlocks.forEach(block => {
+          if (block.reminderOffset !== undefined) {
+              const [h, m] = block.time.split(':').map(Number);
+              const targetDate = new Date(now);
+              targetDate.setHours(h, m, 0, 0);
+              targetDate.setMinutes(targetDate.getMinutes() - block.reminderOffset);
+              
+              const targetTimeStr = targetDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+              
+              if (targetTimeStr === currentTime) {
+                  const lastSentKey = `notif_block_${block.time}_${currentTime}_${todayKey}`;
+                  if (!sessionStorage.getItem(lastSentKey)) {
+                      new Notification(block.activity, {
+                          body: block.reminderOffset === 0 ? `È ora di: ${block.activity}` : `Inizia tra ${block.reminderOffset} min: ${block.activity}`,
+                          icon: "/favicon.ico"
+                      });
+                      sessionStorage.setItem(lastSentKey, "true");
+                  }
+              }
+          }
+      });
+
+      // 2. Check Habit Defaults (Skip if in Daily Plan)
       appState.habits.forEach(habit => {
+        if (habitsInDailyPlan.has(habit.id)) return; // SKIPPED!
+
         if (!habit.reminders) return;
         
         habit.reminders.forEach(reminder => {
@@ -87,7 +140,7 @@ const App: React.FC = () => {
     }, 30000); // Check every 30s to hit the minute
 
     return () => clearInterval(interval);
-  }, [appState.habits]);
+  }, [appState.habits, appState.dailyReminderEnabled, appState.dailyReminderTime, appState.dailyBlocks]);
 
   const saveState = (newState: AppState) => {
     setAppState(newState);

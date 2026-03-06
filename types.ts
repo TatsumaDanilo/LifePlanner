@@ -63,6 +63,9 @@ export interface DailyBlock {
   isFixed: boolean;
   habitId?: string; // Link to a tracked habit
   mediaId?: string; // Link to a specific media item
+  reminderOffset?: number; // Minutes before block time to notify
+  value?: number; // How much this block contributes to the linked habit
+  completed?: boolean; // Whether this specific block is done
 }
 
 export interface AppState {
@@ -74,4 +77,6 @@ export interface AppState {
   // Changed from DailyBlock[] to a map keyed by date string (YYYY-MM-DD)
   dailyBlocks: { [date: string]: DailyBlock[] };
   dayEndTime: string; 
+  dailyReminderTime?: string;
+  dailyReminderEnabled?: boolean;
 }

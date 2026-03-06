@@ -93,7 +93,9 @@ const AddMediaForm: React.FC<Props> = ({ type, initialData, onSave, onCancel }) 
     setShowCandidates(false);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ 
+        apiKey: process.env.API_KEY
+      });
       let prompt = "";
 
       // Istruzioni MOLTO specifiche per evitare link rotti e velocizzare
@@ -176,7 +178,7 @@ const AddMediaForm: React.FC<Props> = ({ type, initialData, onSave, onCancel }) 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full h-[75dvh] flex flex-col relative overflow-hidden">
+    <form onSubmit={handleSubmit} className="w-full h-auto max-h-[75dvh] flex flex-col relative overflow-hidden">
       
       {/* OVERLAY CANDIDATES */}
       <AnimatePresence>

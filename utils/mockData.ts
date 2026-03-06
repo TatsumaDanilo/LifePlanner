@@ -81,6 +81,20 @@ export const initialData: AppState = {
         [getDateRelative(-1)]: 81.5,
         [getTodayKey()]: 81.0
       }
+    },
+    {
+      id: 'water-habit',
+      name: 'Bicchieri d\'acqua',
+      timeOfDay: 'any',
+      color: 'cyan',
+      goal: 8,
+      unit: 'times',
+      streak: 2,
+      history: {
+        [getDateRelative(-2)]: 8,
+        [getDateRelative(-1)]: 8,
+        [getTodayKey()]: 4
+      }
     }
   ],
   logs: [],
@@ -197,5 +211,7 @@ export const initialData: AppState = {
       { time: '13:00', activity: 'Pranzo e Lettura Dune', isFixed: false, mediaId: 'b2' }
     ]
   },
-  dayEndTime: '00:00'
+  dayEndTime: '00:00',
+  dailyReminderTime: '08:00',
+  dailyReminderEnabled: false
 };
