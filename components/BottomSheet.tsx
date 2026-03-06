@@ -23,7 +23,7 @@ const BottomSheet: React.FC<Props> = ({ title, onClose, children }) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[70] bg-[#121212] rounded-t-[40px] shadow-2xl safe-bottom border-t border-white/10 max-h-[90vh] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[70] bg-[#121212] rounded-t-[40px] shadow-2xl safe-bottom border-t border-white/10 max-h-[90dvh] flex flex-col"
       >
         <div className="flex flex-col items-center w-full flex-shrink-0">
            <div className="w-12 h-1 bg-zinc-700 rounded-full mt-3 mb-6" />

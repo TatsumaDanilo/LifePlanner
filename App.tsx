@@ -381,7 +381,7 @@ const App: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-32 right-6 z-50 pointer-events-auto"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom)+8rem)] right-6 z-50 pointer-events-auto"
           >
             <FloatingMenu 
               isOpen={isMenuOpen} 

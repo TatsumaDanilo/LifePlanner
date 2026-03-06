@@ -355,7 +355,7 @@ const HomeView: React.FC<Props> = ({ state, expandedCategory, setExpandedCategor
   return (
     <div className={`flex flex-col w-full ${expandedCategory ? 'h-auto' : 'h-full'}`}>
       
-      <motion.header layout className="flex-shrink-0 mb-4 pt-16 px-6">
+      <motion.header layout className="flex-shrink-0 mb-4 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6">
         <div className="flex items-center justify-between">
           <span className="text-xl font-black opacity-20 tracking-tighter">{yearShort}</span>
           <div className="flex items-center space-x-2">

@@ -614,7 +614,7 @@ const AddHabitForm: React.FC<Props> = ({ type, initialData, onBack, onSave }) =>
   );
 
   return (
-    <div className="w-full flex flex-col h-[65vh] relative">
+    <div className="w-full flex flex-col h-[65dvh] relative">
        <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar relative">
           <AnimatePresence mode="wait">
               {step === 1 ? (

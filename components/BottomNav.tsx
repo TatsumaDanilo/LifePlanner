@@ -19,7 +19,7 @@ const BottomNav: React.FC<Props> = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <nav className="w-full px-4 pb-8 pt-2 pointer-events-none flex justify-center">
+    <nav className="w-full px-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-2 pointer-events-none flex justify-center">
       <div className="liquid-blur w-full max-w-sm h-18 rounded-[36px] flex items-center justify-around px-2 relative pointer-events-auto shadow-2xl border border-white/10 overflow-hidden bg-black/40 backdrop-blur-3xl">
         <LayoutGroup>
           {tabs.map((tab) => {

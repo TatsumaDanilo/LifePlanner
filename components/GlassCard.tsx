@@ -9,15 +9,27 @@ interface Props {
   icon?: React.ReactNode;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  isExpanded?: boolean;
+  onToggle?: (expanded: boolean) => void;
 }
 
-const GlassCard: React.FC<Props> = ({ title, subtitle, icon, children, defaultExpanded = false }) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+const GlassCard: React.FC<Props> = ({ title, subtitle, icon, children, defaultExpanded = false, isExpanded: controlledExpanded, onToggle }) => {
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded;
+  
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle(!isExpanded);
+    } else {
+      setInternalExpanded(!isExpanded);
+    }
+  };
 
   return (
     <div className="liquid-blur rounded-3xl mb-4 overflow-hidden border border-white/5 bg-white/[0.03]">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
         className="w-full flex items-center justify-between p-5 text-left active:bg-white/5 transition-colors"
       >
         <div className="flex items-center space-x-3">

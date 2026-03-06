@@ -118,7 +118,7 @@ const BlockEditorModal = ({
                 animate={{ scale: 1, y: 0 }} 
                 exit={{ scale: 0.9, y: 20 }} 
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl relative max-h-[90vh] flex flex-col"
+                className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[32px] p-6 shadow-2xl relative max-h-[90dvh] flex flex-col"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 flex-shrink-0">
@@ -262,6 +262,7 @@ const BlockEditorModal = ({
 const DailyView: React.FC<Props> = ({ state, setState }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isAgendaExpanded, setIsAgendaExpanded] = useState(false);
+  const [isBrainDumpExpanded, setIsBrainDumpExpanded] = useState(false);
   
   // State for Editor
   const [editorData, setEditorData] = useState<{ time: string, activity: string, habitId?: string, mediaId?: string, reminderOffset?: number, value?: number, isExisting: boolean } | null>(null);
@@ -468,11 +469,14 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
         if (activeEl) {
             // If it's the first render, we snap instantly.
             if (isFirstRender.current) {
-                activeEl.scrollIntoView({
-                    behavior: 'auto', // Instant scroll
-                    inline: 'center',
-                    block: 'nearest'
-                });
+                // Use a small timeout to ensure layout is fully calculated before scrolling
+                setTimeout(() => {
+                    activeEl.scrollIntoView({
+                        behavior: 'auto', // Instant scroll
+                        inline: 'center',
+                        block: 'nearest'
+                    });
+                }, 0);
                 isFirstRender.current = false;
             } else {
                 // Otherwise, smooth scroll for user navigation
@@ -490,8 +494,8 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
   const isSelected = (d: Date) => d.toDateString() === selectedDate.toDateString();
 
   return (
-    <div className="flex flex-col transform-gpu w-full h-auto pb-56">
-      <header className="flex-shrink-0 px-6 pt-16 mb-4 flex items-center justify-between">
+    <div className="flex flex-col transform-gpu w-full h-auto pb-48">
+      <header className="flex-shrink-0 px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] mb-4 flex items-center justify-between">
         <div>
             <h1 className="text-4xl font-black tracking-tighter">Daily Plan</h1>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">Deep Work & Flow</p>
@@ -502,7 +506,8 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
         <GlassCard 
           title="Brain Dump" 
           icon={<Sparkles size={18} className="text-purple-400" />}
-          defaultExpanded={false}
+          isExpanded={isBrainDumpExpanded}
+          onToggle={setIsBrainDumpExpanded}
         >
           <textarea
             value={state.brainDump}
@@ -620,7 +625,7 @@ const DailyView: React.FC<Props> = ({ state, setState }) => {
 
       <div 
         ref={scrollRef}
-        className="fixed bottom-28 left-0 right-0 z-30 flex gap-3 overflow-x-auto no-scrollbar py-2 px-6 mask-fade-edges snap-x snap-mandatory"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+96px)] left-0 right-0 z-30 flex gap-3 overflow-x-auto no-scrollbar py-2 px-6 mask-fade-edges snap-x snap-mandatory"
       >
         {days.map((date, i) => (
           <motion.button

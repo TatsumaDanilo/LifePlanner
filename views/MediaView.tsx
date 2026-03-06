@@ -261,7 +261,7 @@ const MediaView: React.FC<Props> = ({
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[100] flex flex-col bg-transparent backdrop-blur-[40px] h-full overflow-hidden"
           >
-            <header className="flex-shrink-0 pt-16 px-6 flex justify-between items-center z-10">
+            <header className="flex-shrink-0 pt-[calc(env(safe-area-inset-top)+1.5rem)] px-6 flex justify-between items-center z-10">
                <button onClick={() => handleSetSelectedId(null)} className="w-12 h-12 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform shadow-xl"><ChevronLeft/></button>
                {navigationStack.length > 0 ? (
                  <button onClick={handleCloseAllCollections} className="w-12 h-12 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform shadow-xl"><X/></button>
@@ -306,7 +306,7 @@ const MediaView: React.FC<Props> = ({
           </motion.div>
         ) : navigationStack.length > 0 ? (
           <motion.div key="collection-view" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full overflow-hidden relative">
-             <header className="flex-shrink-0 px-6 pt-16 pb-4 flex items-center gap-4">
+             <header className="flex-shrink-0 px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4 flex items-center gap-4">
                 <button onClick={handleGoBack} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center shadow-lg active:scale-90"><ChevronLeft/></button>
                 <div className="flex-1 min-w-0">
                    <h1 className="text-3xl font-black uppercase tracking-tighter truncate leading-none">{currentFolder.title}</h1>
@@ -371,7 +371,7 @@ const MediaView: React.FC<Props> = ({
             onTouchEnd={handleTouchEnd}
             style={{ touchAction: 'pan-y' }}
           >
-             <header className="px-6 pt-16 pb-4">
+             <header className="px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-4">
                 <div className="flex items-center justify-between mb-6">
                    <h1 className="text-4xl font-black uppercase tracking-tighter">Media</h1>
                    <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 scale-90">
@@ -452,7 +452,7 @@ const MediaView: React.FC<Props> = ({
                initial={{ opacity: 0, scale: 0.95, y: 10 }}
                animate={{ opacity: 1, scale: 1, y: 0 }}
                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-               className="fixed left-6 right-6 bottom-32 bg-[#121212] rounded-[32px] p-6 z-[120] border border-white/10 shadow-2xl max-h-[60vh] overflow-y-auto no-scrollbar"
+               className="fixed left-6 right-6 bottom-32 bg-[#121212] rounded-[32px] p-6 z-[120] border border-white/10 shadow-2xl max-h-[60dvh] overflow-y-auto no-scrollbar"
             >
                 <div className="flex flex-col items-center text-center">
                     <h3 className="text-xl font-bold mb-2">Elimina {confirmAction.type === 'collection' ? 'Cartella' : 'Elemento'}?</h3>
