@@ -775,6 +775,33 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   const isWeeklyTargetMet = currentWeeklyCompletions >= weeklyTarget;
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
   const isReport = isWeight || habit.id === 'water-habit';
+  const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
+
+  const [quitDuration, setQuitDuration] = useState<{days: number, hours: number, minutes: number, seconds: number} | null>(null);
+
+  useEffect(() => {
+      if (!isQuit) return;
+      const startStr = habit.description?.replace('Start: ', '');
+      if (!startStr) return;
+      
+      const update = () => {
+          const start = new Date(startStr);
+          const now = new Date();
+          const diff = now.getTime() - start.getTime();
+          if (diff < 0) {
+              setQuitDuration({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+              return;
+          }
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          setQuitDuration({ days, hours, minutes, seconds });
+      };
+      update();
+      const interval = setInterval(update, 1000); 
+      return () => clearInterval(interval);
+  }, [habit, isQuit]);
 
   const historyEntries = useMemo(() => {
     return Object.entries(habit.history)
@@ -792,6 +819,27 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   }, [habit.history]);
 
   const lastRecordedWeight = historyEntries.length > 0 ? historyEntries[historyEntries.length - 1].value : 0;
+
+  const quitMilestone = useMemo(() => {
+      if (!isQuit || !quitDuration) return null;
+      const milestones = [1, 3, 7, 14, 30, 90, 180, 365];
+      const currentDays = quitDuration.days;
+      const nextMilestone = milestones.find(m => m > currentDays) || milestones[milestones.length - 1];
+      const prevMilestone = milestones.slice().reverse().find(m => m <= currentDays) || 0;
+      
+      const startStr = habit.description?.replace('Start: ', '');
+      if (!startStr) return null;
+      const start = new Date(startStr);
+      const now = new Date();
+      const diffMs = now.getTime() - start.getTime();
+      const nextMilestoneMs = nextMilestone * 24 * 60 * 60 * 1000;
+      const percentage = Math.min(100, Math.max(0, (diffMs / nextMilestoneMs) * 100));
+      
+      return {
+          next: nextMilestone,
+          percentage
+      };
+  }, [isQuit, quitDuration, habit.description]);
 
   const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>(habit.timerDefault || 'stopwatch');
   const [timerRunning, setTimerRunning] = useState(false);
@@ -816,6 +864,24 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
     const newHistory = { ...habit.history, [dateKey]: newVal };
     const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory } : h);
     setState({ ...state, habits: updatedHabits });
+  };
+
+  const handleRelapse = () => {
+      if (!isQuit) return;
+      if (window.confirm("Sei sicuro di voler resettare il timer? Questa azione non può essere annullata.")) {
+          const now = new Date();
+          const newDescription = `Start: ${now.toISOString()}`;
+          const currentResets = typeof habit.history[dateKey] === 'number' ? habit.history[dateKey] as number : 0;
+          const newHistory = { ...habit.history, [dateKey]: currentResets + 1 };
+          
+          const updatedHabits = state.habits.map(h => {
+              if (h.id === habit.id) {
+                  return { ...h, description: newDescription, history: newHistory };
+              }
+              return h;
+          });
+          setState({ ...state, habits: updatedHabits });
+      }
   };
 
   const handleTimerSave = () => {
@@ -927,6 +993,60 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                             </div>
                                         </div>
                                     </div>
+                                ) : isQuit ? (
+                                    <>
+                                    <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 py-2 flex-shrink-0">
+                                        {quitDuration ? (
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="text-5xl sm:text-6xl font-black font-mono tracking-tighter text-white drop-shadow-lg flex items-baseline gap-2">
+                                                    <span>{quitDuration.days.toString().padStart(2, '0')}</span>
+                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-zinc-600">:</motion.span>
+                                                    <span>{quitDuration.hours.toString().padStart(2, '0')}</span>
+                                                    <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-zinc-600">:</motion.span>
+                                                    <span>{quitDuration.minutes.toString().padStart(2, '0')}</span>
+                                                </div>
+                                                <div className="flex gap-10 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-2">
+                                                    <span>Days</span>
+                                                    <span>Hours</span>
+                                                    <span>Mins</span>
+                                                </div>
+                                                <div className="mt-6 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-zinc-400">
+                                                    Started: {new Date(habit.description?.replace('Start: ', '') || '').toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">Loading timer...</div>
+                                        )}
+
+                                        {quitMilestone && (
+                                            <div className="w-full max-w-[280px] mt-8 flex flex-col gap-2">
+                                                <div className="flex justify-between items-end">
+                                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Next Milestone</span>
+                                                    <span className="text-xs font-black text-white">{quitMilestone.next} Days</span>
+                                                </div>
+                                                <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                                    <motion.div 
+                                                        initial={{ width: 0 }} 
+                                                        animate={{ width: `${quitMilestone.percentage}%` }} 
+                                                        className={`h-full ${styles.bg.replace('/10', '')}`}
+                                                    />
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[9px] font-bold text-zinc-600">{Math.round(quitMilestone.percentage)}%</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-center w-full px-6 flex-shrink-0 mt-4 pb-2">
+                                        <button 
+                                            onClick={handleRelapse}
+                                            className="w-full max-w-[280px] py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+                                        >
+                                            <TimerReset size={20} strokeWidth={2.5} />
+                                            Ho ceduto (Reset)
+                                        </button>
+                                    </div>
+                                    </>
                                 ) : (
                                     <>
                                     <div className="flex-1 w-full flex items-center justify-center min-h-0 py-2 flex-shrink-0">
