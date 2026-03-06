@@ -995,9 +995,9 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 ) : isQuit ? (
                                     <>
-                                    <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 py-2 flex-shrink-0">
+                                    <div className="flex-1 w-full flex flex-col items-center justify-between min-h-0 py-2 flex-shrink-0">
                                         {quitDuration ? (
-                                            <div className="flex flex-col items-center justify-center">
+                                            <div className="flex flex-col items-center justify-center mt-2">
                                                 <div className="text-5xl sm:text-6xl font-black font-mono tracking-tighter text-white drop-shadow-lg flex items-baseline gap-2">
                                                     <span>{quitDuration.days.toString().padStart(2, '0')}</span>
                                                     <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-zinc-600">:</motion.span>
@@ -1015,29 +1015,29 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest">Loading timer...</div>
+                                            <div className="text-zinc-500 text-sm font-bold uppercase tracking-widest mt-2">Loading timer...</div>
                                         )}
 
                                         {quitMilestone && (
                                             <div className="w-full max-w-[280px] mt-8 flex flex-col gap-2">
                                                 <div className="flex justify-between items-end">
-                                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Next Milestone</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Next Milestone</span>
+                                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{Math.round(quitMilestone.percentage)}%</span>
+                                                    </div>
                                                     <span className="text-xs font-black text-white">{quitMilestone.next} Days</span>
                                                 </div>
                                                 <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                                                     <motion.div 
                                                         initial={{ width: 0 }} 
                                                         animate={{ width: `${quitMilestone.percentage}%` }} 
-                                                        className={`h-full ${styles.bg.replace('/10', '')}`}
+                                                        className="h-full bg-gradient-to-r from-violet-800/40 via-violet-600 to-violet-400"
                                                     />
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-[9px] font-bold text-zinc-600">{Math.round(quitMilestone.percentage)}%</span>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex items-center justify-center w-full px-6 flex-shrink-0 mt-4 pb-2">
+                                    <div className="flex items-center justify-center w-full px-6 flex-shrink-0 mt-8 mb-4 pb-2">
                                         <button 
                                             onClick={handleRelapse}
                                             className="w-full max-w-[280px] py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
@@ -1254,7 +1254,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                         {[ 
                             { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, 
                             { id: 'check', label: 'Check', icon: CheckSquare }, 
-                            !isReport ? { id: 'timer', label: 'Timer', icon: Clock } : null 
+                            (!isReport && !isQuit) ? { id: 'timer', label: 'Timer', icon: Clock } : null 
                         ].filter(Boolean).map((tab: any) => { 
                             const isActive = activeTab === tab.id; 
                             return ( 
