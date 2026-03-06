@@ -1061,13 +1061,13 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 initial={{ opacity: 0, y: 20 }} 
                                 animate={{ opacity: 1, y: 0 }} 
                                 exit={{ opacity: 0, y: 20 }} 
-                                className="flex-1 w-full flex flex-col items-center px-6 pt-4 overflow-hidden"
+                                className="flex-1 w-full flex flex-col items-center justify-around px-6 pt-4 overflow-hidden"
                             >
-                                <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-8 text-center flex-shrink-0">
+                                <h2 className="text-2xl font-black uppercase tracking-tighter text-white text-center flex-shrink-0">
                                     {habit.name}
                                 </h2>
 
-                                <div className="flex-shrink-0 flex flex-col items-center w-full mb-8">
+                                <div className="flex-shrink-0 flex flex-col items-center w-full">
                                     <div className="flex bg-zinc-900/80 p-1 rounded-2xl border border-white/5 w-full max-w-[220px] shadow-inner">
                                         <button 
                                             onClick={() => setTimerMode('stopwatch')} 
@@ -1084,7 +1084,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 </div>
 
-                                <div className="flex-1 w-full flex items-center justify-center py-4 min-h-0">
+                                <div className="w-full flex items-center justify-center py-4 min-h-0">
                                     <div className="w-full max-w-[260px] h-32 rounded-[32px] border-[4px] border-zinc-900 flex items-center justify-center relative bg-zinc-900/40 shadow-2xl flex-shrink-0 overflow-hidden">
                                         <div className="absolute inset-0 rounded-[28px] border border-white/5" />
                                         
@@ -1103,7 +1103,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 </div>
 
-                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full mt-auto pb-4">
+                                <div className="flex-shrink-0 flex items-center justify-center gap-6 w-full pb-4">
                                     <button 
                                         onClick={() => { setTimerRunning(false); if(timerMode==='stopwatch') setTimerSeconds(0); else setTimerSeconds(initialCountdown); }} 
                                         className="w-14 h-14 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 active:scale-95 border border-white/5 shadow-lg"
@@ -1128,9 +1128,26 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                     </AnimatePresence>
                 </div>
                 
-                <div className="px-6 pb-6 pt-2 flex-shrink-0 z-40 flex justify-center bg-[#0a0a0a]">
+                {/* FOOTER DI NAVIGAZIONE - ORA È STATICO E NON COPRE PIÙ NULLA */}
+                <div className="px-6 pb-8 pt-2 flex-shrink-0 z-40 flex justify-center bg-[#0a0a0a]">
                     <div className="p-2 rounded-[32px] flex w-full max-w-sm bg-zinc-900/80 backdrop-blur-md border border-white/10 shadow-2xl">
-                        {[ { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, { id: 'check', label: 'Check', icon: CheckSquare }, !isReport ? { id: 'timer', label: 'Timer', icon: Clock } : null ].filter(Boolean).map((tab: any) => { const isActive = activeTab === tab.id; return ( <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 py-4 rounded-[24px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-100' : 'text-zinc-500 hover:bg-white/5 scale-95'}`}><tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} /><span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span></button>); })}
+                        {[ 
+                            { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, 
+                            { id: 'check', label: 'Check', icon: CheckSquare }, 
+                            !isReport ? { id: 'timer', label: 'Timer', icon: Clock } : null 
+                        ].filter(Boolean).map((tab: any) => { 
+                            const isActive = activeTab === tab.id; 
+                            return ( 
+                                <button 
+                                    key={tab.id} 
+                                    onClick={() => setActiveTab(tab.id as any)} 
+                                    className={`flex-1 py-4 rounded-[24px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${isActive ? 'bg-white text-black shadow-lg scale-100' : 'text-zinc-500 hover:bg-white/5 scale-95'}`}
+                                >
+                                    <tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{tab.label}</span>
+                                </button>
+                            ); 
+                        })}
                     </div>
                 </div>
              </div>
