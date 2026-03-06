@@ -890,16 +890,16 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
         <motion.div layoutId={`habit-card-${habit.id}`} initial={{ borderRadius: 28 }} animate={{ borderRadius: 48 }} exit={{ borderRadius: 28 }} transition={{ type: "spring", stiffness: 300, damping: 30 }} className="w-full max-w-sm h-[82dvh] max-h-[650px] bg-[#0a0a0a] overflow-hidden relative shadow-2xl border border-white/10 flex flex-col z-10" onClick={(e) => e.stopPropagation()}>
              <div className="w-full h-full flex flex-col relative">
                 <div className="absolute top-[-25%] left-[-15%] w-[90%] h-[70%] bg-purple-900/15 blur-[140px] rounded-full pointer-events-none z-0 mix-blend-screen" />
-                <div className="pt-8 px-6 pb-2 flex items-center justify-end z-10 relative">
+                <div className="pt-8 px-6 pb-2 flex items-center justify-end z-10 relative flex-shrink-0">
                     <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-zinc-400 active:bg-white/20 active:text-white transition-colors"><X size={22} /></button>
                 </div>
                 
                 <div className="flex-1 flex flex-col relative overflow-hidden z-10">
                     <AnimatePresence mode="wait">
                          {activeTab === 'check' && (
-                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center pt-4 overflow-hidden">
-                                <div className="flex flex-col items-center flex-shrink-0 px-6 w-full">
-                                    <h2 className="text-4xl font-black uppercase tracking-tighter text-center mb-3 leading-none text-white drop-shadow-md">{habit.name}</h2>
+                            <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center pt-2 overflow-hidden justify-center">
+                                <div className="flex flex-col items-center flex-shrink-0 px-6 w-full mb-4">
+                                    <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-center mb-2 leading-none text-white drop-shadow-md">{habit.name}</h2>
                                     {!isWeight && (
                                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-lg ${isWeeklyTargetMet ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/10'}`}>
                                             <span className={`text-[10px] font-bold uppercase tracking-widest ${isWeeklyTargetMet ? 'text-emerald-400' : 'text-zinc-400'}`}>Streak</span>
@@ -909,19 +909,19 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 </div>
                                 
                                 {hasStructure ? (
-                                    <div className="flex-1 w-full flex flex-col min-h-0 py-4 px-6 flex-shrink-0">
-                                        <div className="mb-4 flex items-center justify-between flex-shrink-0">
+                                    <div className="flex-1 w-full flex flex-col min-h-0 px-6 flex-shrink-0">
+                                        <div className="mb-3 flex items-center justify-between flex-shrink-0">
                                             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tasks Today</span>
                                             <span className="text-xs font-black text-white">{Math.round(structPercentage)}% Done</span>
                                         </div>
-                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-6 flex-shrink-0">
+                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mb-4 flex-shrink-0">
                                             <motion.div 
                                                 initial={{ width: 0 }} 
                                                 animate={{ width: `${structPercentage}%` }} 
                                                 className={`h-full ${structPercentage >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                                             />
                                         </div>
-                                        <div className="flex-1 w-full overflow-y-auto no-scrollbar pb-4">
+                                        <div className="flex-1 w-full overflow-y-auto no-scrollbar pb-2">
                                             <div className="flex flex-col">
                                                 {renderChecklist(dailyStructure)}
                                             </div>
@@ -929,18 +929,18 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                 ) : (
                                     <>
-                                    <div className="flex-1 w-full flex items-center justify-center min-h-0 py-4 flex-shrink-0">
-                                        <div className="relative w-56 h-56 flex-shrink-0 flex items-center justify-center">
+                                    <div className="flex-1 w-full flex items-center justify-center min-h-0 py-2 flex-shrink-0">
+                                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex-shrink-0 flex items-center justify-center">
                                                 {!isReport && (
                                                     <svg className="w-full h-full rotate-[-90deg] drop-shadow-2xl">
-                                                        <circle cx="50%" cy="50%" r="45%" className="stroke-zinc-900" strokeWidth="20" fill="none" />
+                                                        <circle cx="50%" cy="50%" r="45%" className="stroke-zinc-900" strokeWidth="16" fill="none" />
                                                         <motion.circle 
                                                             initial={{ pathLength: 0 }} 
                                                             animate={{ pathLength: currentValue === -1 ? 0 : Math.min(1, currentValue / habit.goal) }}
                                                             transition={{ duration: 0.5, ease: "easeOut" }}
                                                             cx="50%" cy="50%" r="45%" 
                                                             className={`stroke-${(isFlexible && !isWeeklyTargetMet) ? habit.color : 'emerald'}-500`} 
-                                                            strokeWidth="20" 
+                                                            strokeWidth="16" 
                                                             fill="none" 
                                                             strokeLinecap="round" 
                                                         />
@@ -949,12 +949,12 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                                                     <motion.div key={currentValue} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
                                                         <div className="flex items-baseline justify-center gap-2">
-                                                            <span className="text-6xl font-black tracking-tighter text-white">{isReport ? lastRecordedWeight : (currentValue === -1 ? '-' : currentValue)}</span>
-                                                            <span className="text-3xl font-black text-blue-400 uppercase transform translate-y-[-4px]">{habit.unit}</span>
+                                                            <span className="text-5xl sm:text-6xl font-black tracking-tighter text-white">{isReport ? lastRecordedWeight : (currentValue === -1 ? '-' : currentValue)}</span>
+                                                            <span className="text-2xl sm:text-3xl font-black text-blue-400 uppercase transform translate-y-[-4px]">{habit.unit}</span>
                                                         </div>
-                                                        <div className="flex flex-col items-center mt-2">
+                                                        <div className="flex flex-col items-center mt-1 sm:mt-2">
                                                             <span className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">{isReport ? 'Current' : 'Goal'}</span>
-                                                            <span className="text-sm font-black text-zinc-300">
+                                                            <span className="text-xs sm:text-sm font-black text-zinc-300">
                                                                 {isReport 
                                                                     ? (habit.goal > 0 && <span className="opacity-60">{habit.goal} {habit.unit}</span>) 
                                                                     : <>{habit.goal} <span className="text-[9px] opacity-60">{habit.unit}</span></>
@@ -965,10 +965,10 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                                 </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-center gap-5 w-full px-6 flex-shrink-0 mt-auto pb-4">
-                                            {!isReport && <button onClick={() => updateValue(-1)} className="w-16 h-16 flex-shrink-0 rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
-                                            {!isReport && <button onClick={handleSkip} className={`w-16 h-16 flex-shrink-0 rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
-                                            {(!isReport || isWeight) && <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-20 h-20 flex-shrink-0 rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>}
+                                    <div className="flex items-center justify-center gap-4 sm:gap-5 w-full px-6 flex-shrink-0 mt-4 pb-2">
+                                            {!isReport && <button onClick={() => updateValue(-1)} className="w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[20px] sm:rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
+                                            {!isReport && <button onClick={handleSkip} className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[20px] sm:rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
+                                            {(!isReport || isWeight) && <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-[24px] sm:rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>}
                                     </div>
                                     </>
                                 )}
