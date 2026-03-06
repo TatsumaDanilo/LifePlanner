@@ -216,6 +216,79 @@ const getWeeklyCompletions = (habit: Habit, currentDate: Date) => {
     return count;
 };
 
+const calculateStreak = (habit: Habit, currentDate: Date): number => {
+    const config = getHabitConfig(habit);
+    const isFlexible = config.type === 'days_per';
+    const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
+    
+    let streak = 0;
+    const today = new Date(currentDate);
+    today.setHours(0, 0, 0, 0);
+    
+    if (isFlexible) {
+        let currentWeekStart = getStartOfWeek(today);
+        let checkDate = new Date(currentWeekStart);
+        
+        const currentCompletions = getWeeklyCompletions(habit, checkDate);
+        if (currentCompletions >= weeklyTarget) {
+            streak++;
+        }
+        
+        checkDate.setDate(checkDate.getDate() - 7);
+        
+        while (true) {
+            const completions = getWeeklyCompletions(habit, checkDate);
+            if (completions >= weeklyTarget) {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 7);
+            } else {
+                break;
+            }
+        }
+    } else {
+        let checkDate = new Date(today);
+        
+        const getDayStatus = (d: Date) => {
+            const k = getLocalDateKey(d);
+            const entry = habit.history[k];
+            if (typeof entry === 'number') {
+                if (entry === -1) return 'skipped';
+                return entry >= habit.goal ? 'completed' : 'failed';
+            } else if (entry && typeof entry === 'object') {
+                const structure = getDailyStructure(habit, d);
+                if (structure.length > 0) {
+                    const { percentage } = getStructureProgress(habit, k, structure);
+                    return percentage >= 100 ? 'completed' : 'failed';
+                }
+            }
+            return 'failed';
+        };
+
+        let status = getDayStatus(checkDate);
+        if (status === 'completed') {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else if (status === 'skipped') {
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            checkDate.setDate(checkDate.getDate() - 1);
+        }
+        
+        while (true) {
+            status = getDayStatus(checkDate);
+            if (status === 'completed') {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else if (status === 'skipped') {
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+    }
+    return streak;
+};
+
 interface HabitCardProps {
   habit: Habit;
   onClick: () => void;
@@ -251,10 +324,12 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
   const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
+  const isWater = habit.id === 'water-habit';
   const isFlexible = config.type === 'days_per'; 
   const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
   const currentWeeklyCompletions = getWeeklyCompletions(habit, currentDate);
   const isWeeklyTargetMet = currentWeeklyCompletions >= weeklyTarget;
+  const currentStreak = calculateStreak(habit, currentDate);
 
   const getBaseColor = (c: string) => {
       const colors: Record<string, string> = {
@@ -427,10 +502,10 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
       <div className="absolute inset-0 flex justify-between items-center px-4 rounded-[28px] pointer-events-none">
          <div className="flex items-center gap-3 w-[110px] justify-start pointer-events-auto">
             <button onClick={(e) => { e.stopPropagation(); onDeleteRequest(); animate(x, 0); }} className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center border border-red-500/30 active:scale-90 transition-transform"><Trash2 size={18} /></button>
-            <button onClick={(e) => { e.stopPropagation(); onEditRequest(); animate(x, 0); }} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 active:scale-90 transition-transform"><Edit3 size={18} /></button>
+            {!isWater && <button onClick={(e) => { e.stopPropagation(); onEditRequest(); animate(x, 0); }} className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center border border-white/20 active:scale-90 transition-transform"><Edit3 size={18} /></button>}
          </div>
          <div className="flex items-center gap-3 w-[110px] justify-end pointer-events-auto">
-            {!isReport && !isQuit && (
+            {!isReport && !isQuit && !isWater && (
                 <>
                 <button onClick={(e) => handleAction(e, onTimer)} className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 active:scale-90 transition-transform"><TimerIcon size={18} /></button>
                 <button onClick={(e) => handleAction(e, onSkip)} className="w-10 h-10 rounded-full bg-zinc-700/50 text-zinc-400 flex items-center justify-center border border-white/10 active:scale-90 transition-transform"><ChevronsRight size={18} /></button>
@@ -442,7 +517,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
       <motion.div
         style={{ x }}
         drag="x"
-        dragConstraints={{ left: (isReport || isQuit) ? 0 : -120, right: 120 }}
+        dragConstraints={{ left: (isReport || isQuit || isWater) ? 0 : -120, right: 120 }}
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
         className="relative z-20 touch-pan-y transform-gpu"
@@ -459,7 +534,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                     <h3 className="text-sm font-black uppercase tracking-tight text-white leading-tight">{habit.name}</h3>
                     {isReport && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5">{isWeight ? <Scale size={10} className="text-zinc-400" /> : <BarChart2 size={10} className="text-zinc-400" />}</div>)}
                     {isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20"><Ban size={10} className="text-red-400" /></div>)}
-                    {!isReport && !isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${habit.streak > 0 ? styles.text : 'text-zinc-600'}`} fill={habit.streak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${habit.streak > 0 ? 'text-white' : 'text-zinc-600'}`}>{habit.streak}</span></div>)}
+                    {!isReport && !isQuit && (<div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/5 border border-white/5"><Flame size={10} className={`${currentStreak > 0 ? styles.text : 'text-zinc-600'}`} fill={currentStreak > 0 ? "currentColor" : "none"} /><span className={`text-[9px] font-black ${currentStreak > 0 ? 'text-white' : 'text-zinc-600'}`}>{currentStreak}</span></div>)}
                 </div>
                 <div className="flex items-center gap-2">
                     {showDetailCount && (<div className="px-2 py-1 text-right"><span className="text-[10px] font-black text-white">{displayValue}</span><span className="text-[9px] font-bold text-zinc-500"> / {dailyGoal} {hasStructure ? 'micro' : (habit.unit === 'minutes' ? 'min' : (habit.unit === 'times' ? '' : habit.unit))}</span></div>)}
@@ -798,6 +873,8 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
   const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
+  const isWater = habit.id === 'water-habit';
+  const currentStreak = calculateStreak(habit, currentDate);
 
   const [quitDuration, setQuitDuration] = useState<{days: number, hours: number, minutes: number, seconds: number} | null>(null);
 
@@ -991,7 +1068,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     {!isWeight && !isQuit && (
                                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-lg ${isWeeklyTargetMet ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/10'}`}>
                                             <span className={`text-[10px] font-bold uppercase tracking-widest ${isWeeklyTargetMet ? 'text-emerald-400' : 'text-zinc-400'}`}>Streak</span>
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isWeeklyTargetMet ? 'text-white' : 'text-white'}`}>{habit.streak} {isFlexible ? 'Wks' : 'Days'}</span>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${isWeeklyTargetMet ? 'text-white' : 'text-white'}`}>{currentStreak} {isFlexible ? 'Wks' : 'Days'}</span>
                                         </div>
                                     )}
                                 </div>
@@ -1284,7 +1361,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                         {[ 
                             { id: 'entries', label: isReport ? 'Report' : 'Calendar', icon: isReport ? TrendingUp : Calendar }, 
                             { id: 'check', label: 'Check', icon: CheckSquare }, 
-                            (!isReport && !isQuit) ? { id: 'timer', label: 'Timer', icon: Clock } : null 
+                            (!isReport && !isQuit && !isWater) ? { id: 'timer', label: 'Timer', icon: Clock } : null 
                         ].filter(Boolean).map((tab: any) => { 
                             const isActive = activeTab === tab.id; 
                             return ( 
