@@ -267,7 +267,7 @@ const App: React.FC = () => {
               id: 'water-habit',
               name: 'Acqua',
               goal: 8,
-              unit: 'bicchieri',
+              unit: 'times',
               color: 'blue'
           });
       } else {
@@ -287,6 +287,8 @@ const App: React.FC = () => {
 
   const handleCreateHabit = (habitData: Partial<Habit>) => {
       const habitExists = habitData.id && appState.habits.some(h => h.id === habitData.id);
+      const todayKey = new Date().toISOString().split('T')[0];
+      const isWaterHabit = habitData.id === 'water-habit';
 
       if (habitExists) {
            const updatedHabits = appState.habits.map(h => h.id === habitData.id ? { ...h, ...habitData } as Habit : h);
@@ -301,7 +303,7 @@ const App: React.FC = () => {
               goal: habitData.goal !== undefined ? habitData.goal : 1, 
               unit: habitData.unit || 'times',
               streak: 0,
-              history: {},
+              history: isWaterHabit ? { [todayKey]: appState.waterIntake } : {},
               structure: habitData.structure, 
               dailyStructures: habitData.dailyStructures,
               reminders: habitData.reminders
