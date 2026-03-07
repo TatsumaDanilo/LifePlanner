@@ -1,12 +1,12 @@
 
 // Complete implementation of HabitsView with support for Regular, Weight and Quit habits.
 import React, { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, animate, Reorder } from 'framer-motion';
 import { 
   Sun, Moon, Zap, ChevronLeft, ChevronRight, Calendar, Clock, Check, Plus, Minus, 
   Play, Pause, RotateCcw, X, CheckSquare, Timer as TimerIcon, ChevronsRight, 
   Flame, AlertCircle, BarChart2, LayoutGrid, Grid, CalendarDays, Trash2, Edit3, Scale, 
-  TrendingUp, List as ListIcon, CornerDownRight, Ban, TimerReset 
+  TrendingUp, List as ListIcon, CornerDownRight, Ban, TimerReset, ArrowUpDown, GripVertical 
 } from 'lucide-react';
 import { AppState, Habit, MicroHabit } from '../types';
 
@@ -95,12 +95,16 @@ const SimpleLineChart = ({ data, color, unit }: { data: { date: string, value: n
     const [width, setWidth] = useState(0);
     const [height, setHeight] = useState(0);
 
-    useLayoutEffect(() => {
-        if (containerRef.current) {
-            const { width, height } = containerRef.current.getBoundingClientRect();
-            setWidth(width);
-            setHeight(height);
-        }
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const observer = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                setWidth(entry.contentRect.width);
+                setHeight(entry.contentRect.height);
+            }
+        });
+        observer.observe(containerRef.current);
+        return () => observer.disconnect();
     }, []);
 
     if (!data || data.length === 0) return <div className="w-full h-full flex items-center justify-center text-zinc-600 text-[10px] font-bold uppercase tracking-widest">No Data</div>;
@@ -116,12 +120,18 @@ const SimpleLineChart = ({ data, color, unit }: { data: { date: string, value: n
 
     const isSinglePoint = data.length === 1;
 
-    const points = data.map((d, i) => {
-        const x = padding + (isSinglePoint ? effectiveWidth / 2 : (i / (data.length - 1)) * effectiveWidth);
-        const normalizedVal = (d.value - min) / range;
-        const y = height - (padding + normalizedVal * effectiveHeight);
-        return `${x},${y}`;
-    }).join(' ');
+    let points = '';
+    if (isSinglePoint) {
+        const y = height - (padding + 0.5 * effectiveHeight);
+        points = `${padding},${y} ${width - padding},${y}`;
+    } else {
+        points = data.map((d, i) => {
+            const x = padding + (i / (data.length - 1)) * effectiveWidth;
+            const normalizedVal = (d.value - min) / range;
+            const y = height - (padding + normalizedVal * effectiveHeight);
+            return `${x},${y}`;
+        }).join(' ');
+    }
 
     const themeColor = getHexFromColor(color);
 
@@ -134,21 +144,19 @@ const SimpleLineChart = ({ data, color, unit }: { data: { date: string, value: n
                         return <line key={p} x1={padding} y1={y} x2={width - padding} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4 4" />;
                     })}
 
-                    {!isSinglePoint && (
-                        <polyline 
-                            points={points} 
-                            fill="none" 
-                            stroke={themeColor} 
-                            strokeWidth="3" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]"
-                        />
-                    )}
+                    <polyline 
+                        points={points} 
+                        fill="none" 
+                        stroke={themeColor} 
+                        strokeWidth="3" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        className="drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                    />
 
                     {data.map((d, i) => {
                         const x = padding + (isSinglePoint ? effectiveWidth / 2 : (i / (data.length - 1)) * effectiveWidth);
-                        const normalizedVal = (d.value - min) / range;
+                        const normalizedVal = isSinglePoint ? 0.5 : (d.value - min) / range;
                         const y = height - (padding + normalizedVal * effectiveHeight);
                         return (
                             <g key={i} className="group cursor-pointer">
@@ -321,7 +329,7 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
   const dailyGoal = hasStructure ? getStructureProgress(habit, dateKey, dailyStructure).total : habit.goal;
   const config = getHabitConfig(habit);
   
-  const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
+  const isWeight = habit.unit.toLowerCase() === 'kg' || habit.unit.toLowerCase() === 'lbs';
   const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
   const isWater = habit.id === 'water-habit';
@@ -578,12 +586,12 @@ const HabitCard: React.FC<HabitCardProps> = ({ habit, onClick, onQuickAdd, onSki
                 ))}
             </div>)}
             {isWeight && (
-                <div className="w-full h-[60px] bg-black/20 rounded-[18px] p-2 relative flex items-center border border-white/5 shadow-inner mt-2">
+                <div className="w-full h-[80px] bg-black/40 rounded-[18px] p-2 relative flex items-center border border-white/5 shadow-inner mt-2">
                     <div className="flex-1 h-full relative">
                         <SimpleLineChart data={weightHistory} color={habit.color} unit={habit.unit} />
                     </div>
                     {lastRecordedWeight > 0 && (
-                        <div className="ml-3 flex-shrink-0 flex items-center justify-center px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                        <div className="ml-3 flex-shrink-0 flex items-center justify-center px-3 py-1 rounded-lg bg-white/5 border border-white/10 whitespace-nowrap">
                             <span className={`text-xs font-black ${styles.text}`}>{lastRecordedWeight} <span className="text-[9px] opacity-70">{habit.unit}</span></span>
                         </div>
                     )}
@@ -870,7 +878,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
   const weeklyTarget = isFlexible ? config.daysPerWeek : 7;
   const currentWeeklyCompletions = getWeeklyCompletions(habit, currentDate);
   const isWeeklyTargetMet = currentWeeklyCompletions >= weeklyTarget;
-  const isWeight = habit.unit === 'kg' || habit.unit === 'lbs';
+  const isWeight = habit.unit.toLowerCase() === 'kg' || habit.unit.toLowerCase() === 'lbs';
   const isReport = isWeight;
   const isQuit = habit.unit === 'minutes' && habit.description?.startsWith('Start:');
   const isWater = habit.id === 'water-habit';
@@ -955,7 +963,12 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
     const newVal = Math.max(0, baseVal + delta);
     const newHistory = { ...habit.history, [dateKey]: newVal };
     const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory } : h);
-    setState({ ...state, habits: updatedHabits });
+    
+    if (habit.id === 'water-habit') {
+        setState({ ...state, habits: updatedHabits, waterIntake: newVal });
+    } else {
+        setState({ ...state, habits: updatedHabits });
+    }
   };
 
   const handleSkip = () => {
@@ -1064,9 +1077,9 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                          {activeTab === 'check' && (
                             <motion.div key="check" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex-1 w-full flex flex-col items-center pt-2 overflow-hidden justify-center">
                                 <div className="flex flex-col items-center flex-shrink-0 px-6 w-full mb-4">
-                                    <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-center mb-2 leading-none text-white drop-shadow-md">{habit.name}</h2>
+                                    <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter text-center mb-4 leading-none text-white drop-shadow-md">{habit.name}</h2>
                                     {!isWeight && !isQuit && (
-                                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-lg ${isWeeklyTargetMet ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/10'}`}>
+                                        <div className={`z-10 flex items-center gap-2 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-lg ${isWeeklyTargetMet ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/10'}`}>
                                             <span className={`text-[10px] font-bold uppercase tracking-widest ${isWeeklyTargetMet ? 'text-emerald-400' : 'text-zinc-400'}`}>Streak</span>
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${isWeeklyTargetMet ? 'text-white' : 'text-white'}`}>{currentStreak} {isFlexible ? 'Wks' : 'Days'}</span>
                                         </div>
@@ -1157,17 +1170,17 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                 ) : (
                                     <>
                                     <div className="flex-1 w-full flex items-center justify-center min-h-0 py-2 flex-shrink-0">
-                                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex-shrink-0 flex items-center justify-center">
+                                        <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0 flex items-center justify-center">
                                                 {!isReport && (
                                                     <svg className="w-full h-full rotate-[-90deg] drop-shadow-2xl">
-                                                        <circle cx="50%" cy="50%" r="45%" className="stroke-zinc-900" strokeWidth="16" fill="none" />
+                                                        <circle cx="50%" cy="50%" r="45%" className="stroke-zinc-900" strokeWidth="12" fill="none" />
                                                         <motion.circle 
                                                             initial={{ pathLength: 0 }} 
                                                             animate={{ pathLength: currentValue === -1 ? 0 : Math.min(1, currentValue / habit.goal) }}
                                                             transition={{ duration: 0.5, ease: "easeOut" }}
                                                             cx="50%" cy="50%" r="45%" 
                                                             className={`stroke-${(isFlexible && !isWeeklyTargetMet) ? habit.color : 'emerald'}-500`} 
-                                                            strokeWidth="16" 
+                                                            strokeWidth="12" 
                                                             fill="none" 
                                                             strokeLinecap="round" 
                                                         />
@@ -1194,7 +1207,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
                                     </div>
                                     <div className="flex items-center justify-center gap-4 sm:gap-5 w-full px-6 flex-shrink-0 mt-4 pb-2">
                                             {!isReport && <button onClick={() => updateValue(-1)} className="w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[20px] sm:rounded-[24px] bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-500 active:bg-white/5 active:scale-95 transition-all shadow-lg"><Minus size={24} strokeWidth={3} /></button>}
-                                            {!isReport && <button onClick={handleSkip} className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[20px] sm:rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
+                                            {!isReport && !isWater && <button onClick={handleSkip} className={`w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[20px] sm:rounded-[24px] flex items-center justify-center shadow-lg active:scale-95 transition-all border ${currentValue === -1 ? 'bg-zinc-800 border-white/20 text-zinc-500' : 'bg-zinc-900 border-white/10 text-zinc-500 hover:text-white'}`}><ChevronsRight size={24} strokeWidth={2} /></button>}
                                             {(!isReport || isWeight) && <button onClick={() => isWeight ? onAddHabit && onAddHabit() : updateValue(1)} className={`w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 rounded-[24px] sm:rounded-[30px] ${styles.accent} text-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] active:scale-95 transition-all ${styles.glow}`}><Plus size={32} strokeWidth={3} /></button>}
                                     </div>
                                     </>
@@ -1386,6 +1399,7 @@ const HabitDetailOverlay: React.FC<HabitDetailOverlayProps> = ({ habit, onClose,
 const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit, onEditHabit }) => {
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{type: 'manual' | 'alpha' | 'time', direction: 'asc' | 'desc', isReorderMode: boolean}>({type: 'manual', direction: 'asc', isReorderMode: false});
   const [skipHabit, setSkipHabit] = useState<Habit | null>(null);
   const [deleteHabit, setDeleteHabit] = useState<Habit | null>(null);
   const [quickTimerHabit, setQuickTimerHabit] = useState<Habit | null>(null);
@@ -1416,7 +1430,12 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
     const newVal = Math.max(0, currentVal + delta);
     const newHistory = { ...habit.history, [dateKey]: newVal };
     const updatedHabits = state.habits.map(h => h.id === habit.id ? { ...h, history: newHistory } : h);
-    setState({ ...state, habits: updatedHabits });
+    
+    if (habit.id === 'water-habit') {
+        setState({ ...state, habits: updatedHabits, waterIntake: newVal });
+    } else {
+        setState({ ...state, habits: updatedHabits });
+    }
   };
 
   const updateWeightValue = (habit: Habit, value: number) => {
@@ -1444,10 +1463,30 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
       }
   };
 
-  const sortedHabits = [...state.habits].sort((a, b) => {
-      const times = { morning: 0, any: 1, evening: 2 };
-      return times[a.timeOfDay] - times[b.timeOfDay];
-  });
+  const sortedHabits = useMemo(() => {
+      let habits = [...state.habits];
+      
+      if (sortConfig.type === 'alpha') {
+          habits.sort((a, b) => {
+              const res = a.name.localeCompare(b.name);
+              return sortConfig.direction === 'asc' ? res : -res;
+          });
+      } else if (sortConfig.type === 'time') {
+          const times = { morning: 0, any: 1, evening: 2 };
+          habits.sort((a, b) => {
+              const res = times[a.timeOfDay] - times[b.timeOfDay];
+              return sortConfig.direction === 'asc' ? res : -res;
+          });
+      } else {
+          // Manual mode: keep current order, but ensure water-habit is at the bottom (first in flex-col-reverse)
+          habits.sort((a, b) => {
+              if (a.id === 'water-habit') return -1;
+              if (b.id === 'water-habit') return 1;
+              return 0;
+          });
+      }
+      return habits;
+  }, [state.habits, sortConfig]);
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -1458,8 +1497,19 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">Consistency is Key</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button onClick={() => {
+                        if (sortConfig.type === 'manual') setSortConfig({type: 'alpha', direction: 'asc', isReorderMode: false});
+                        else if (sortConfig.type === 'alpha') setSortConfig({type: 'time', direction: 'asc', isReorderMode: false});
+                        else setSortConfig({type: 'manual', direction: 'asc', isReorderMode: true});
+                    }} className={`w-12 h-12 rounded-full border border-white/10 flex items-center justify-center transition-colors ${sortConfig.isReorderMode ? 'bg-indigo-500 text-white' : 'bg-zinc-900 text-zinc-400'}`}>
+                        <ArrowUpDown size={20} />
+                    </button>
                     <button onClick={() => setShowReport(true)} className="w-12 h-12 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-400 active:bg-white/10 active:text-white transition-colors"><BarChart2 size={20} /></button>
-                    <button onClick={onAddHabit} className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform"><Plus size={24} /></button>
+                    {sortConfig.isReorderMode ? (
+                        <button onClick={() => setSortConfig({...sortConfig, isReorderMode: false})} className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg active:scale-90 transition-transform">Done</button>
+                    ) : (
+                        <button onClick={onAddHabit} className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-transform"><Plus size={24} /></button>
+                    )}
                 </div>
             </div>
 
@@ -1473,26 +1523,37 @@ const HabitsView: React.FC<Props> = ({ state, setState, onDetailOpen, onAddHabit
             </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32">
-             <div className="space-y-4">
-                 {sortedHabits.length > 0 ? sortedHabits.map(habit => (
-                     <HabitCard 
-                        key={habit.id} 
-                        habit={habit} 
-                        currentDate={currentDate}
-                        dayEndTime={state.dayEndTime || "00:00"}
-                        onClick={() => setSelectedHabitId(habit.id)}
-                        onQuickAdd={(e) => { if (habit.unit === 'kg' || habit.unit === 'lbs') { setWeightLogHabit(habit); } else { updateHabitValue(habit, 1); } }}
-                        onSkip={(e) => setSkipHabit(habit)}
-                        onTimer={(e) => setQuickTimerHabit(habit)}
-                        onDeleteRequest={() => setDeleteHabit(habit)}
-                        onEditRequest={() => onEditHabit && onEditHabit(habit)}
-                     />
-                 )) : (
-                     <div className="flex flex-col items-center justify-center py-20 opacity-30">
-                         <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4"><CheckSquare size={32} /></div>
-                         <p className="text-xs font-black uppercase tracking-widest">No Habits Yet</p>
-                     </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-32 flex flex-col-reverse">
+             <div className="space-y-4 mt-auto">
+                 {sortConfig.isReorderMode ? (
+                     <Reorder.Group axis="y" values={sortedHabits} onReorder={(newHabits) => setState({...state, habits: newHabits})} className="space-y-4">
+                         {sortedHabits.map(habit => (
+                             <Reorder.Item key={habit.id} value={habit} className="bg-zinc-900 p-4 rounded-[24px] flex items-center justify-between border border-white/10">
+                                 <span className="text-white font-bold">{habit.name}</span>
+                                 <GripVertical className="text-zinc-500" />
+                             </Reorder.Item>
+                         ))}
+                     </Reorder.Group>
+                 ) : (
+                     sortedHabits.length > 0 ? sortedHabits.map(habit => (
+                         <HabitCard 
+                            key={habit.id} 
+                            habit={habit} 
+                            currentDate={currentDate}
+                            dayEndTime={state.dayEndTime || "00:00"}
+                            onClick={() => setSelectedHabitId(habit.id)}
+                            onQuickAdd={(e) => { if (habit.unit === 'kg' || habit.unit === 'lbs') { setWeightLogHabit(habit); } else { updateHabitValue(habit, 1); } }}
+                            onSkip={(e) => setSkipHabit(habit)}
+                            onTimer={(e) => setQuickTimerHabit(habit)}
+                            onDeleteRequest={() => setDeleteHabit(habit)}
+                            onEditRequest={() => onEditHabit && onEditHabit(habit)}
+                         />
+                     )) : (
+                         <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                             <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4"><CheckSquare size={32} /></div>
+                             <p className="text-xs font-black uppercase tracking-widest">No Habits Yet</p>
+                         </div>
+                     )
                  )}
              </div>
         </div>

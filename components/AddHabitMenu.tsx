@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Hash, Ban, Scale, CheckSquare } from 'lucide-react';
+import { Hash, Ban, Scale, CheckSquare, Droplets } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -29,6 +29,13 @@ const AddHabitMenu: React.FC<Props> = ({ onSelect }) => {
       description: 'Track daily tasks, water, reading, etc. Build a streak.',
       icon: CheckSquare,
       color: 'text-emerald-400'
+    },
+    {
+      id: 'water',
+      title: 'Acqua',
+      description: 'Traccia la tua idratazione giornaliera.',
+      icon: Droplets,
+      color: 'text-blue-400'
     },
   ];
 

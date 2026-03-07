@@ -262,7 +262,17 @@ const App: React.FC = () => {
   };
   
   const handleHabitTypeSelect = (type: string) => {
-      setSelectedHabitType(type);
+      if (type === 'water') {
+          handleCreateHabit({
+              id: 'water-habit',
+              name: 'Acqua',
+              goal: 8,
+              unit: 'bicchieri',
+              color: 'blue'
+          });
+      } else {
+          setSelectedHabitType(type);
+      }
   };
 
   const handleEditHabit = (habit: Habit) => {
@@ -276,12 +286,14 @@ const App: React.FC = () => {
   };
 
   const handleCreateHabit = (habitData: Partial<Habit>) => {
-      if (habitData.id) {
+      const habitExists = habitData.id && appState.habits.some(h => h.id === habitData.id);
+
+      if (habitExists) {
            const updatedHabits = appState.habits.map(h => h.id === habitData.id ? { ...h, ...habitData } as Habit : h);
            handleUpdateState({ ...appState, habits: updatedHabits });
       } else {
            const newHabit: Habit = {
-              id: Math.random().toString(36).substr(2, 9),
+              id: habitData.id || Math.random().toString(36).substr(2, 9),
               name: habitData.name || 'New Habit',
               description: habitData.description,
               timeOfDay: habitData.timeOfDay || 'any',
